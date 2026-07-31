@@ -6,6 +6,22 @@
 
 ## 📜 對話紀錄歷程
 
+### 📌 [記錄時間: 2026-07-31] - C++ 開發環境與 GCC 16.1.0 編譯器安裝完成驗證
+
+- **系統處理與決策 (System Action & Decision)**:
+  - 背景任務 `task-81` 順利完成 `WinLibs MinGW` (GCC 16.1.0, CMake 4.3.3, Ninja, GDB) 安裝。
+  - 沙盒環境成功載入並驗證 `g++.exe` 與 `cmake.exe` 指令可正常編譯與運作。
+  - 更新版本紀錄 [`CHANGELOG.md`](file:///e:/Rot/CHANGELOG.md) 至 `v0.4.0` 並全數 Commit 且 Push 至 GitHub `main` 分支。
+
+- **當前專案狀態**:
+  - **C++ 編譯器**: GCC 16.1.0 (MinGW-w64 UCRT) 已就緒
+  - **構建工具**: CMake 4.3.3, Ninja 已就緒
+  - **GitHub 狀態**: 已與 `https://github.com/JeffHSU8310/Rot.git` 遠端 `main` 同步。
+  - **當前版本**: v0.4.0
+  - **Git 分支**: main (tracking origin/main)
+
+---
+
 ### 📌 [記錄時間: 2026-07-31] - C++ 編譯器安裝錯誤排除與 WinLibs 自動安裝
 
 - **使用者需求 (User Prompt)**:
@@ -17,12 +33,6 @@
     2. Chocolatey 寫入 `C:\ProgramData` 需要管理員身分（Run as Administrator）。
   - 為使使用者無須手動開管理員視窗，沙盒自動執行 `winget install BrechtSanders.WinLibs.POSIX.UCRT --scope user` 完成免管理員權限安裝。
   - 更新 [`CHANGELOG.md`](file:///e:/Rot/CHANGELOG.md) 至 `v0.3.2` 並同步提交至 GitHub `main` 分支。
-
-- **當前專案狀態**:
-  - **GitHub 狀態**: 已與 `https://github.com/JeffHSU8310/Rot.git` 遠端 `main` 同步。
-  - **核心語言**: C++ (已解決編譯器安裝阻礙)
-  - **當前版本**: v0.3.2
-  - **Git 分支**: main (tracking origin/main)
 
 ---
 

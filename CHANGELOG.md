@@ -4,6 +4,18 @@
 
 ---
 
+## [v0.4.0] - 2026-07-31
+
+### 環境成就 (Environment Accomplished)
+- **C++ 開發環境與編譯器就緒**：
+  - `WinLibs GCC 16.1.0` (MinGW-w64) 及 `CMake 4.3.3` 安裝完成。
+  - 沙盒環境已可順利調用 `g++` 進行 C++20 / C++23 / C++26 程式碼編譯、構建與測試。
+
+### 備註 (Notes)
+- 已 Commit 並自動同步至 **origin/main**。
+
+---
+
 ## [v0.3.2] - 2026-07-31
 
 ### 故障排除與環境升級 (Troubleshooting & Environment)
