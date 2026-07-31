@@ -1,0 +1,7 @@
+# Build output
+build/CMakeFiles/
+build/CMakeCache.txt
+build/cmake_install.cmake
+build/.ninja_*
+build/build.ninja
+build/*.txt
