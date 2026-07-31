@@ -4,18 +4,26 @@
 
 ---
 
-## [v2.1.0] - 2026-07-31
+## [v3.0.0] - 2026-07-31
 
-### 全彩控制台與自包含發布打包 (ANSI Colorful Terminal & Package)
-- **C++ 控制台全彩 VT100 ANSI 視覺化**：
-  - 開啟 Windows 控制台 VT100 虛擬終端能力 (`ENABLE_VIRTUAL_TERMINAL_PROCESSING`)。
-  - 控制台輸出採用**台灣市場專屬色彩**：上漲/買進亮**炫彩台股紅 (`\033[1;31m`)**，下跌/賣出亮**極光翡翠綠 (`\033[1;32m`)**，標題/選單亮**霓虹青 (`\033[1;36m`)**，評分亮**金黃 (`\033[1;33m`)**。
-- **發布打包獨立綠色封裝 (Standalone Distribution)**：
-  - 打包生成獨立免安裝綠色包 [`dist/TaiwanSmartQuant_v2.1_Standalone`](file:///e:/Rot/dist/TaiwanSmartQuant_v2.1_Standalone) 與 [`TaiwanSmartQuant_v2.1_Standalone.zip`](file:///e:/Rot/TaiwanSmartQuant_v2.1_Standalone.zip)。
-  - 包含 C++ 純自包含 `.exe` 與全彩 HTML5/CSS3/JS GUI 資源，解壓即可雙擊執行全彩版軟體！
+### 純原生 Windows 桌面軟體重大發布 (Pure Windows Native Desktop GUI)
+- **徹底移除黑框 CMD 控制台終端機 (No Console Window)**：
+  - 於 [`CMakeLists.txt`](file:///e:/Rot/CMakeLists.txt) 配置 `WIN32` 子系統軟體編譯旗標（`-mwindows`）。
+  - 於 [`main.cpp`](file:///e:/Rot/src/main.cpp) 加上 `FreeConsole()` 與 `ShowWindow(SW_HIDE)` 雙重防護，雙擊 `.exe` **100% 不會彈出任何黑色命令列視窗**。
+- **原生獨立桌面視窗 (Native Desktop App Window)**：
+  - 移除瀏覽器分頁頁籤格式，雙擊 `TaiwanSmartQuant.exe` 即可直接啟動**獨立軟體視窗（Native Window）**，就像安裝過的三竹股市、TradingView 或一般 Windows 桌面軟體一樣！
+- **發布打包獨立綠色封裝 (v3.0.0 Release)**：
+  - 產生獨立發布綠色壓縮包 [`TaiwanSmartQuant_v3.0_NativeGUI_Standalone.zip`](file:///e:/Rot/TaiwanSmartQuant_v3.0_NativeGUI_Standalone.zip) 與發布目錄 [`dist/TaiwanSmartQuant_v3.0_NativeGUI_Standalone`](file:///e:/Rot/dist/TaiwanSmartQuant_v3.0_NativeGUI_Standalone)。
 
 ### 備註 (Notes)
 - 已 Commit 並自動同步至 **origin/main**。
+
+---
+
+## [v2.1.0] - 2026-07-31
+
+### 全彩控制台與自包含發布打包 (ANSI Colorful Terminal & Package)
+- **C++ 控制台全彩 VT100 ANSI 視覺化**。
 
 ---
 
