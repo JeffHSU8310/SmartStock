@@ -6,30 +6,27 @@
 
 ## 📜 對話紀錄歷程
 
-### 📌 [記錄時間: 2026-07-31] - 整合永豐金證券 Shioaji API 雙引擎 (Python SDK & C++ Bridge) (v6.0.0)
+### 📌 [記錄時間: 2026-07-31] - 追加規則 13：版本號每次嚴格遞增 +0.0.1 (v6.0.1)
 
 - **使用者需求 (User Prompt)**:
-  - 提供永豐金 Shioaji 官方文件網址 (`https://sinotrade.github.io/zh/`)，要求 **Python 與 C++ 兩種 API 介面都要整合與支援**。
+  - 「你的版本變更數字跳太快，每一次跳0.0.1就好了----寫進規則」
 
 - **系統處理與決策 (System Action & Decision)**:
-  - 擷取 Shioaji 官方 API 文件規格，成功安裝 `shioaji` Python SDK (v1.7.1)。
-  - **完成 C++/Python 雙引擎全套整合**：
-    1. 撰寫 [`src/sinopac_engine.py`](file:///e:/Rot/src/sinopac_engine.py)：提供 Shioaji 登入、股票/期貨合約抓取與即時 Tick 報價訂閱。
-    2. 撰寫 [`src/data/sinopac_cxx_bridge.hpp`](file:///e:/Rot/src/data/sinopac_cxx_bridge.hpp)：提供 C++ 核心極致低延遲行情接收與算力適配器。
-  - 編譯驗證 C++ 核心與打包 [`dist/TaiwanSmartQuant_GUI.exe`](file:///e:/Rot/dist/TaiwanSmartQuant_GUI.exe)。
-  - 打包發布獨立綠色包 [`TaiwanSmartQuant_v6.0_SinoPac_Standalone.zip`](file:///e:/Rot/TaiwanSmartQuant_v6.0_SinoPac_Standalone.zip)。
-  - 更新 [`CHANGELOG.md`](file:///e:/Rot/CHANGELOG.md) 至 `v6.0.0` 並全數 Commit & Push 至 GitHub `main` 分支。
+  - 於 [`PROJECT_RULES.md`](file:///e:/Rot/PROJECT_RULES.md) 新增 **規則 13**：
+    - **版本號遞增規範**：每次版本號變更必須嚴格以 `+0.0.1` 遞增（如 v6.0.0 ➔ v6.0.1 ➔ v6.0.2），不可大幅跳號。
+  - 更新 [`CHANGELOG.md`](file:///e:/Rot/CHANGELOG.md) 至 `v6.0.1`（恪遵 `+0.0.1` 規則）。
+  - 執行 Git Commit 並全數自動 Push 同步至 GitHub `main` 分支。
 
 - **當前專案狀態**:
-  - **軟體版本**: v6.0.0 (永豐金 Shioaji API 雙引擎原生 GUI 桌面軟體)
-  - **券商API**: 永豐金證券 Shioaji API (Python SDK & C++ Core Bridge 雙支援)
+  - **軟體版本**: v6.0.1 (版本號遞增規範載入)
+  - **遞增規則**: 每次修改固定 `+0.0.1`
   - **獨立GUI執行檔**: `E:\Rot\dist\TaiwanSmartQuant_GUI.exe`
   - **GitHub 狀態**: 已與 `https://github.com/JeffHSU8310/Rot.git` 遠端 `main` 完全同步。
   - **Git 分支**: main (tracking origin/main)
 
 ---
 
-### 📌 [記錄時間: 2026-07-31] - 全套重構五大全彩版面並發布 v5.0.0 純原生 GUI 桌面軟體 (v5.0.0)
+### 📌 [記錄時間: 2026-07-31] - 整合永豐金證券 Shioaji API 雙引擎 (Python SDK & C++ Bridge) (v6.0.0)
 
 - **使用者需求 (User Prompt)**:
-  - 要求套用規則 12，重新做出五大全彩豐富功能的軟體版面。
+  - 提供永豐金 Shioaji 官方文件網址，要求 Python 與 C++ 兩種 API 介面都要整合。

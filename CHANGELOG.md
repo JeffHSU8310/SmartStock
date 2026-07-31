@@ -4,19 +4,23 @@
 
 ---
 
-## [v6.0.0] - 2026-07-31
+## [v6.0.1] - 2026-07-31
 
-### 永豐金證券 Shioaji API 雙引擎整合發布 (SinoPac Shioaji API Integration)
-- **實作 Python SinoPac Shioaji SDK 模組 ([sinopac_engine.py](file:///e:/Rot/src/sinopac_engine.py))**：
-  - 成功安裝並整合 `shioaji` Python SDK (v1.7.1)。
-  - 支援模擬環境測試與真實 API 登入、合約查詢 (TWSE/TPEx/TAIFEX) 與 Tick/KBar 實時報價訂閱。
-- **實作 C++ SinoPac Shioaji 核心算力適配器 ([sinopac_cxx_bridge.hpp](file:///e:/Rot/src/data/sinopac_cxx_bridge.hpp))**：
-  - 為 C++ 核心引擎提供高效能低延遲的報價資料流結構。
-- **雙引擎發布封裝 (v6.0.0 Release)**：
-  - 打包發布獨立執行檔 [`dist/TaiwanSmartQuant_GUI.exe`](file:///e:/Rot/dist/TaiwanSmartQuant_GUI.exe) 與綠色封裝包 [`TaiwanSmartQuant_v6.0_SinoPac_Standalone.zip`](file:///e:/Rot/TaiwanSmartQuant_v6.0_SinoPac_Standalone.zip)。
+### 規則 13 追加 (版本號遞增規範 +0.0.1)
+- **寫入規則 13 於 [`PROJECT_RULES.md`](file:///e:/Rot/PROJECT_RULES.md)**：
+  - **規範內容**：**每次版本號變更，必須嚴格依照 `+0.0.1` 遞增（例如：v6.0.0 ➔ v6.0.1 ➔ v6.0.2）**，嚴禁大幅度跳號。
+- **儲存庫與對話歷史同步**：
+  - 更新 [`CONVERSATION_HISTORY.md`](file:///e:/Rot/CONVERSATION_HISTORY.md) 紀錄規則 13。
 
 ### 備註 (Notes)
 - 已 Commit 並自動同步至 **origin/main**。
+
+---
+
+## [v6.0.0] - 2026-07-31
+
+### 永豐金證券 Shioaji API 雙引擎整合發布 (SinoPac Shioaji API Integration)
+- 實作 Python SinoPac Shioaji SDK 模組與 C++ SinoPac Shioaji 核心算力適配器。
 
 ---
 
