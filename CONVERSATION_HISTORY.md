@@ -6,6 +6,26 @@
 
 ## 📜 對話紀錄歷程
 
+### 📌 [記錄時間: 2026-07-31] - C++ 編譯器安裝錯誤排除與 WinLibs 自動安裝
+
+- **使用者需求 (User Prompt)**:
+  - 回報安裝 MinGW 遇到的錯誤（`winget install MinGW.MinGW` 找不到套件、`choco install mingw` 因無管理者權限導致存取 `C:\ProgramData\chocolatey\lib-bad` 失敗被拒），要求協助排除。
+
+- **系統處理與決策 (System Action & Decision)**:
+  - 診斷錯誤原因：
+    1. Winget 官方 ID 應為 `BrechtSanders.WinLibs.POSIX.UCRT` 而非 `MinGW.MinGW`。
+    2. Chocolatey 寫入 `C:\ProgramData` 需要管理員身分（Run as Administrator）。
+  - 為使使用者無須手動開管理員視窗，沙盒自動執行 `winget install BrechtSanders.WinLibs.POSIX.UCRT --scope user` 完成免管理員權限安裝。
+  - 更新 [`CHANGELOG.md`](file:///e:/Rot/CHANGELOG.md) 至 `v0.3.2` 並同步提交至 GitHub `main` 分支。
+
+- **當前專案狀態**:
+  - **GitHub 狀態**: 已與 `https://github.com/JeffHSU8310/Rot.git` 遠端 `main` 同步。
+  - **核心語言**: C++ (已解決編譯器安裝阻礙)
+  - **當前版本**: v0.3.2
+  - **Git 分支**: main (tracking origin/main)
+
+---
+
 ### 📌 [記錄時間: 2026-07-31] - 將規則與歷史紀錄成功併入 GitHub 遠端 main 分支
 
 - **使用者需求 (User Prompt)**:
@@ -15,12 +35,6 @@
   - 執行 `git push -u origin main`，成功將 `main` 分支推送到 GitHub Remote (`https://github.com/JeffHSU8310/Rot.git`)。
   - 更新版本紀錄檔案 [`CHANGELOG.md`](file:///e:/Rot/CHANGELOG.md) 至 `v0.3.1`。
   - 再次提交 Commit 並同步 push 至遠端 `main` 分支。
-
-- **當前專案狀態**:
-  - **GitHub 狀態**: 已與 `https://github.com/JeffHSU8310/Rot.git` 遠端 `main` 完全同步。
-  - **核心語言**: C++ (輔助 Python 3.14)
-  - **當前版本**: v0.3.1
-  - **Git 分支**: main (tracking origin/main)
 
 ---
 

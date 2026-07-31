@@ -4,6 +4,19 @@
 
 ---
 
+## [v0.3.2] - 2026-07-31
+
+### 故障排除與環境升級 (Troubleshooting & Environment)
+- **C++ 編譯器安裝問題排除**：
+  - 解決 `winget install MinGW.MinGW` 套件 ID 不匹配問題（更新為正確 ID `BrechtSanders.WinLibs.POSIX.UCRT`）。
+  - 排除 `choco install mingw` 因權限不足導致 `C:\ProgramData\chocolatey\lib-bad` 存取被拒錯誤。
+  - 自動於沙盒進行 `WinLibs MinGW GCC 16.1.0` 免管理員權限安裝。
+
+### 備註 (Notes)
+- 已 Commit 並自動同步至 **origin/main**。
+
+---
+
 ## [v0.3.1] - 2026-07-31
 
 ### 同步與發布 (Synced & Pushed)
