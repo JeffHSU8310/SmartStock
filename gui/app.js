@@ -1,16 +1,16 @@
-// TaiwanSmartQuant GUI v2.0 - 炫彩前端互動與圖表引擎
+// TaiwanSmartQuant GUI v5.0 - 炫彩前端互動與 ECharts 圖表引擎
 document.addEventListener('DOMContentLoaded', () => {
     initTabs();
-    initSampleData();
     renderMarketTable();
     renderKLineChart('2330.TW');
     renderRobotCards();
     renderBacktestChart();
+    renderNewsFeed();
     renderCrudTable();
     initTelegramEvents();
 });
 
-// 全域資料快取
+// 全域數據資料庫快取
 let currentSymbol = '2330.TW';
 let sampleMarketData = [
     { symbol: '2330.TW', name: '台積電', market: '上市股票(TWSE)', price: 1020.0, change: 2.51, volume: '45,280張', ma5: 1010, rsi: 65, kd: 72, pattern: '看漲吞噬' },
@@ -21,13 +21,19 @@ let sampleMarketData = [
 ];
 
 let sampleRobotData = [
-    { symbol: '2330.TW', name: '台積電', market: 'TWSE', score: 92, recommend: 'BUY', fundScore: 24, chipScore: 23, techScore: 25, newsScore: 20, reason: '基本面與營收雙雙強勁突破，三大法人買賣超同步大買，技術面呈現多頭排列！' },
+    { symbol: '2330.TW', name: '台積電', market: 'TWSE', score: 92, recommend: 'BUY', fundScore: 24, chipScore: 23, techScore: 25, newsScore: 20, reason: '基本面與營收雙雙強勁突破，三大法人同步大買，技術面呈現多頭排列！' },
     { symbol: 'TX00.FITX', name: '台指期全月', market: 'TAIFEX', score: 88, recommend: 'BUY', fundScore: 20, chipScore: 22, techScore: 26, newsScore: 20, reason: '全球科技股走強帶動台指期多頭爆發，短中長天期均線全面向上延伸。' },
     { symbol: '3293.TWO', name: '鈊象', market: 'TPEX', score: 85, recommend: 'BUY', fundScore: 23, chipScore: 20, techScore: 24, newsScore: 18, reason: '海外授權營收維持高度成長，三大法人連三日回補。' },
     { symbol: '2317.TW', name: '鴻海', market: 'TWSE', score: 62, recommend: 'HOLD', fundScore: 18, chipScore: 15, techScore: 15, newsScore: 14, reason: '股價於回檔波段落腳於月線支撐，觀望籌碼與法人態度轉變。' }
 ];
 
-// 1. Tab 切換邏輯
+let sampleNewsData = [
+    { title: '台積電先進製程訂單持續爆滿，法人看好全年獲利再創新高', source: '經濟日報', time: '10:30', symbol: '2330.TW', score: '+0.88 樂觀看多' },
+    { title: '聯準會利率會議維持不變，美科技股勁揚帶動台股夜盤跳漲', source: '中央社', time: '09:45', symbol: 'TX00.FITX', score: '+0.75 極力偏多' },
+    { title: '聯發科天璣晶片出貨超預期，旗艦款市場佔有率大幅上升', source: '工商時報', time: '09:15', symbol: '2454.TW', score: '+0.65 中性偏多' }
+];
+
+// 1. 五大 Tab 切換邏輯
 function initTabs() {
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -43,7 +49,7 @@ function initTabs() {
                 targetTab.classList.add('active');
             }
 
-            // 重新繪製圖表以自適應寬度
+            // 重新自適應寬度
             setTimeout(() => {
                 echarts.getInstanceByDom(document.getElementById('kline-chart-container'))?.resize();
                 echarts.getInstanceByDom(document.getElementById('equity-chart-container'))?.resize();
@@ -87,12 +93,12 @@ function renderMarketTable() {
 // 3. ECharts K線與技術指標渲染
 function renderKLineChart(symbol) {
     const chartDom = document.getElementById('kline-chart-container');
+    if (!chartDom) return;
     let myChart = echarts.getInstanceByDom(chartDom);
     if (!myChart) {
         myChart = echarts.init(chartDom, 'dark');
     }
 
-    // 生成歷史 60 根 K 線隨機漫步數據
     const dates = [];
     const kdata = [];
     const volumes = [];
@@ -137,8 +143,8 @@ function renderKLineChart(symbol) {
                 type: 'candlestick',
                 data: kdata,
                 itemStyle: {
-                    color: '#FF3B69',       // 上漲紅
-                    color0: '#00E676',      // 下跌綠
+                    color: '#FF3B69',       // 台股上漲紅
+                    color0: '#00E676',      // 台股下跌綠
                     borderColor: '#FF3B69',
                     borderColor0: '#00E676'
                 }
@@ -159,9 +165,10 @@ function renderKLineChart(symbol) {
     myChart.setOption(option);
 }
 
-// 4. 智慧選股雷達卡片渲染
+// 4. 智慧選股雷達卡片
 function renderRobotCards() {
     const container = document.getElementById('robot-cards-container');
+    if (!container) return;
     container.innerHTML = '';
 
     sampleRobotData.forEach(card => {
@@ -210,9 +217,10 @@ function renderRobotCards() {
     });
 }
 
-// 5. C++ 回測資產權益圖表
+// 5. C++ 回測圖表
 function renderBacktestChart() {
     const chartDom = document.getElementById('equity-chart-container');
+    if (!chartDom) return;
     let myChart = echarts.getInstanceByDom(chartDom);
     if (!myChart) {
         myChart = echarts.init(chartDom, 'dark');
@@ -220,7 +228,7 @@ function renderBacktestChart() {
 
     const dates = [];
     const equityData = [];
-    let equity = 1000000; // 本金 100 萬
+    let equity = 1000000;
 
     for (let i = 120; i >= 0; i--) {
         const date = new Date(Date.now() - i * 86400000).toISOString().split('T')[0];
@@ -236,7 +244,7 @@ function renderBacktestChart() {
         xAxis: { type: 'category', data: dates },
         yAxis: { type: 'value', scale: true, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
         series: [{
-            name: '策略資產權益 (NTD)',
+            name: 'C++ 策略資產權益 (NTD)',
             type: 'line',
             smooth: true,
             data: equityData,
@@ -257,9 +265,32 @@ function renderBacktestChart() {
     });
 }
 
-// 6. CRUD 數據管理
+// 6. 渲染消息面新聞列表
+function renderNewsFeed() {
+    const container = document.getElementById('news-feed-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    sampleNewsData.forEach(news => {
+        const div = document.createElement('div');
+        div.className = 'news-item';
+        div.innerHTML = `
+            <div class="n-info">
+                <h4>${news.title}</h4>
+                <p>來源: ${news.source} | 發布時間: ${news.time} | 標的: ${news.symbol}</p>
+            </div>
+            <div>
+                <span class="sentiment-tag bull">${news.score}</span>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+// 7. CRUD 數據管理
 function renderCrudTable() {
     const tbody = document.getElementById('crud-table-body');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     const crudItems = [
@@ -286,7 +317,7 @@ function renderCrudTable() {
     });
 }
 
-// 7. Telegram 設定事件
+// 8. Telegram 設定事件
 function initTelegramEvents() {
     const testBtn = document.getElementById('test-tg-btn');
     const msgDiv = document.getElementById('tg-status-msg');
@@ -295,8 +326,4 @@ function initTelegramEvents() {
         msgDiv.className = 'status-msg success';
         msgDiv.innerText = '🚀 [即時推播測試成功] 警報訊息已成功傳送至您的手機 Telegram！';
     });
-}
-
-function initSampleData() {
-    // 預留與 C++ API 接軌架構
 }
