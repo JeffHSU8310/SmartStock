@@ -4,47 +4,35 @@
 
 ---
 
-## [v4.0.0] - 2026-07-31
+## [v4.1.0] - 2026-07-31
 
-### 規則 12 追加與 C++/Python 雙引擎純原生 GUI 軟體發布 (Dual-Engine Native GUI Release)
-- **寫入規則 12 於 [`PROJECT_RULES.md`](file:///e:/Rot/PROJECT_RULES.md)**：
-  - 核心原則：**C++ 語言掌管核心計算與架構，Python 語言作為輔助開發（原生桌面 GUI 視窗軟體與對接）**。
-- **純原生獨立桌面軟體 (Pure Native Desktop Software Window)**：
-  - 採用 `pywebview` + Microsoft Edge Native Window Host 引擎，於 [`src/gui_host.py`](file:///e:/Rot/src/gui_host.py) 建立原生視窗。
-  - **0 CMD 黑框** (無命令列終端機視窗)
-  - **0 瀏覽器分頁 (無 Chrome/Edge 網頁分頁頁籤，無網址列，無搜尋列)**
-  - **100% 純正獨立桌面應用程式視窗**！
-- **全新獨立執行檔與發布綠色封裝 (v4.0.0 Release)**：
-  - 打包生成單一獨立執行檔 [`dist/TaiwanSmartQuant_GUI.exe`](file:///e:/Rot/dist/TaiwanSmartQuant_GUI.exe) 與綠色封裝包 [`TaiwanSmartQuant_v4.0_NativeGUI_Standalone.zip`](file:///e:/Rot/TaiwanSmartQuant_v4.0_NativeGUI_Standalone.zip)。
-  - 100% 離線渲染深色玻璃美學、三竹風格行情列表、ECharts K線圖、選股雷達與回測圖表。
+### 規則 12 細化與技術架構明確劃分 (Rule Refinement & Module Architecture)
+- **細化與強調規則 12 於 [`PROJECT_RULES.md`](file:///e:/Rot/PROJECT_RULES.md)**：
+  - **C++ 核心職責**：主要掌管 **K線圖計算、實時/歷史報價引擎、事件驅動策略回測、四大面智慧選股**。
+  - **Python 輔助職責**：主要掌管 **GUI 原生視窗版面、炫彩視覺排版渲染與獨立軟體封裝**。
+- **儲存庫與對話歷史自動同步**：
+  - 更新 [`CONVERSATION_HISTORY.md`](file:///e:/Rot/CONVERSATION_HISTORY.md) 紀錄明確分工原則。
 
 ### 備註 (Notes)
 - 已 Commit 並自動同步至 **origin/main**。
 
 ---
 
+## [v4.0.0] - 2026-07-31
+
+### 規則 12 追加與 C++/Python 雙引擎純原生 GUI 軟體發布 (Dual-Engine Native GUI Release)
+- 追加規則 12，發布純原生視窗軟體 [`dist/TaiwanSmartQuant_GUI.exe`](file:///e:/Rot/dist/TaiwanSmartQuant_GUI.exe)。
+
+---
+
 ## [v3.1.0] - 2026-07-31
 
 ### 原生全彩視窗修復與離線圖表整合 (Native App Window & Offline ECharts)
-- 修復 MSHTA 舊版 IE 兼向導致白屏與 Script Error 問題。
+- 修復舊版指令碼錯誤，本地整合 ECharts。
 
 ---
 
 ## [v3.0.0] - 2026-07-31
 
 ### 純原生 Windows 桌面軟體重大發布 (Pure Windows Native Desktop GUI)
-- 徹底移除黑框 CMD 控制台終端機 (No Console Window)。
-
----
-
-## [v2.1.0] - 2026-07-31
-
-### 全彩控制台與自包含發布打包 (ANSI Colorful Terminal & Package)
-- C++ 控制台全彩 VT100 ANSI 視覺化。
-
----
-
-## [v2.0.0] - 2026-07-31
-
-### 炫彩 GUI 視窗軟體重大升級 (Major GUI Release)
-- 全新高階深色玻璃 (Dark Glassmorphism) 視覺介面。
+- 徹底移除黑框 CMD 控制台終端機。
