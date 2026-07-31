@@ -4,6 +4,18 @@
 
 ---
 
+## [v0.3.0] - 2026-07-31
+
+### 新增與設定 (Added & Configured)
+- **GitHub 儲存庫位置**：於 [`PROJECT_RULES.md`](file:///e:/Rot/PROJECT_RULES.md) 明確標註 GitHub 儲存庫網址 `https://github.com/JeffHSU8310/Rot.git`。
+- **Git Remote 設定**：設定本地 Git `origin` 指向 `https://github.com/JeffHSU8310/Rot.git`。
+- **對話歷史更新**：更新 [`CONVERSATION_HISTORY.md`](file:///e:/Rot/CONVERSATION_HISTORY.md) 紀錄 GitHub 網址連結。
+
+### 備註 (Notes)
+- 已 Commit 並自動合併至 **main** 分支。
+
+---
+
 ## [v0.2.0] - 2026-07-31
 
 ### 新增 (Added)
