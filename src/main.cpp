@@ -9,12 +9,17 @@
 #include <iomanip>
 #include <vector>
 #include <string>
+#include <cstdlib>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 using namespace TaiwanQuant;
 
 void printHeader() {
     std::cout << "========================================================\n"
-              << "  台灣智慧機器人選股與回測系統 (TaiwanSmartQuant v1.0)\n"
+              << "  台灣智慧機器人選股與回測系統 (TaiwanSmartQuant v1.0.2)\n"
               << "  覆蓋市場: 上市(TWSE) | 上櫃(TPEX) | 台指期貨/選擇權(TAIFEX)\n"
               << "========================================================\n" << std::flush;
 }
@@ -31,6 +36,13 @@ void printMenu() {
 }
 
 int main() {
+    // Windows 控制台繁體中文 UTF-8 編碼切換
+    #ifdef _WIN32
+    SetConsoleOutputCP(65001);
+    SetConsoleCP(65001);
+    system("chcp 65001 > nul");
+    #endif
+
     StorageEngine storage;
     storage.generateSampleData(); // 載入上市/上櫃/期貨數據庫
 
