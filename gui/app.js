@@ -1,30 +1,32 @@
-// TaiwanSmartQuant GUI v5.0 - 炫彩前端互動與 ECharts 圖表引擎
+// TaiwanSmartQuant GUI v6.0.4 - 看盤大廳與即時報價 Shioaji 雙引擎
 document.addEventListener('DOMContentLoaded', () => {
     initTabs();
     renderMarketTable();
-    renderKLineChart('2330.TW');
+    renderKLineChart('2330.TW', '日K');
     renderRobotCards();
     renderBacktestChart();
     renderNewsFeed();
     renderCrudTable();
     initTelegramEvents();
+    initPeriodSelector();
 });
 
-// 全域數據資料庫快取
 let currentSymbol = '2330.TW';
+let currentPeriod = '日K';
+
 let sampleMarketData = [
-    { symbol: '2330.TW', name: '台積電', market: '上市股票(TWSE)', price: 1020.0, change: 2.51, volume: '45,280張', ma5: 1010, rsi: 65, kd: 72, pattern: '看漲吞噬' },
-    { symbol: '2454.TW', name: '聯發科', market: '上市股票(TWSE)', price: 1255.0, change: 1.21, volume: '12,450張', ma5: 1240, rsi: 58, kd: 52, pattern: '常規型態' },
-    { symbol: '2317.TW', name: '鴻海', market: '上市股票(TWSE)', price: 212.5, change: -0.93, volume: '68,120張', ma5: 215, rsi: 42, kd: 35, pattern: '錘子線' },
-    { symbol: 'TX00.FITX', name: '台指期全月', market: '台指期貨(TAIFEX)', price: 22850.0, change: 1.25, volume: '128,450口', ma5: 22650, rsi: 68, kd: 78, pattern: '長紅突破' },
-    { symbol: '3293.TWO', name: '鈊象', market: '上櫃股票(TPEX)', price: 1080.0, change: 3.85, volume: '5,320張', ma5: 1040, rsi: 78, kd: 82, pattern: '看漲吞噬' }
+    { symbol: '2330.TW', name: '台積電', market: '上市股票(TWSE)', price: 1025.0, change: 3.02, volume: '48,520張', ma5: 1012, rsi: 68.5, kd: 75.2, pattern: '看漲吞噬' },
+    { symbol: '2454.TW', name: '聯發科', market: '上市股票(TWSE)', price: 1260.0, change: 1.61, volume: '14,200張', ma5: 1245, rsi: 61.2, kd: 58.0, pattern: '常規多頭' },
+    { symbol: '2317.TW', name: '鴻海', market: '上市股票(TWSE)', price: 211.5, change: -1.40, volume: '71,500張', ma5: 214, rsi: 40.1, kd: 32.5, pattern: '錘子強撐' },
+    { symbol: 'TX00.FITX', name: '台指期全月', market: '台指期貨(TAIFEX)', price: 22890.0, change: 1.42, volume: '135,200口', ma5: 22680, rsi: 71.0, kd: 81.4, pattern: '長紅突破' },
+    { symbol: '3293.TWO', name: '鈊象', market: '上櫃股票(TPEX)', price: 1090.0, change: 4.81, volume: '6,150張', ma5: 1045, rsi: 81.2, kd: 86.0, pattern: '強勢突破' }
 ];
 
 let sampleRobotData = [
-    { symbol: '2330.TW', name: '台積電', market: 'TWSE', score: 92, recommend: 'BUY', fundScore: 24, chipScore: 23, techScore: 25, newsScore: 20, reason: '基本面與營收雙雙強勁突破，三大法人同步大買，技術面呈現多頭排列！' },
-    { symbol: 'TX00.FITX', name: '台指期全月', market: 'TAIFEX', score: 88, recommend: 'BUY', fundScore: 20, chipScore: 22, techScore: 26, newsScore: 20, reason: '全球科技股走強帶動台指期多頭爆發，短中長天期均線全面向上延伸。' },
-    { symbol: '3293.TWO', name: '鈊象', market: 'TPEX', score: 85, recommend: 'BUY', fundScore: 23, chipScore: 20, techScore: 24, newsScore: 18, reason: '海外授權營收維持高度成長，三大法人連三日回補。' },
-    { symbol: '2317.TW', name: '鴻海', market: 'TWSE', score: 62, recommend: 'HOLD', fundScore: 18, chipScore: 15, techScore: 15, newsScore: 14, reason: '股價於回檔波段落腳於月線支撐，觀望籌碼與法人態度轉變。' }
+    { symbol: '2330.TW', name: '台積電', market: 'TWSE', score: 95, recommend: '強烈買進', fundScore: 25, chipScore: 24, techScore: 26, newsScore: 20, reason: '基本面與營收雙雙強勁突破，三大法人同步大買，技術面呈現多頭排列！' },
+    { symbol: 'TX00.FITX', name: '台指期全月', market: 'TAIFEX', score: 90, recommend: '強烈買進', fundScore: 21, chipScore: 23, techScore: 26, newsScore: 20, reason: '全球科技股走強帶動台指期多頭爆發，短中長天期均線全面向上延伸。' },
+    { symbol: '3293.TWO', name: '鈊象', market: 'TPEX', score: 88, recommend: '買進突破', fundScore: 24, chipScore: 21, techScore: 25, newsScore: 18, reason: '海外授權營收維持高度成長，三大法人連三日回補。' },
+    { symbol: '2317.TW', name: '鴻海', market: 'TWSE', score: 65, recommend: '觀望中立', fundScore: 18, chipScore: 16, techScore: 16, newsScore: 15, reason: '股價於回檔波段落腳於月線支撐，觀望籌碼與法人態度轉變。' }
 ];
 
 let sampleNewsData = [
@@ -33,7 +35,6 @@ let sampleNewsData = [
     { title: '聯發科天璣晶片出貨超預期，旗艦款市場佔有率大幅上升', source: '工商時報', time: '09:15', symbol: '2454.TW', score: '+0.65 中性偏多' }
 ];
 
-// 1. 五大 Tab 切換邏輯
 function initTabs() {
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -49,7 +50,6 @@ function initTabs() {
                 targetTab.classList.add('active');
             }
 
-            // 重新自適應寬度
             setTimeout(() => {
                 echarts.getInstanceByDom(document.getElementById('kline-chart-container'))?.resize();
                 echarts.getInstanceByDom(document.getElementById('equity-chart-container'))?.resize();
@@ -58,9 +58,21 @@ function initTabs() {
     });
 }
 
-// 2. 渲染看盤大廳表格
+function initPeriodSelector() {
+    const periodBtns = document.querySelectorAll('.period-btn');
+    periodBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            periodBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentPeriod = btn.innerText;
+            renderKLineChart(currentSymbol, currentPeriod);
+        });
+    });
+}
+
 function renderMarketTable() {
     const tbody = document.getElementById('quote-table-body');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     sampleMarketData.forEach(item => {
@@ -82,16 +94,15 @@ function renderMarketTable() {
 
         tr.addEventListener('click', () => {
             currentSymbol = item.symbol;
-            document.getElementById('current-chart-title').innerHTML = `<i class="fa-solid fa-chart-candlestick"></i> ${item.name} (${item.symbol}) - 全週期 K 線與技術指標圖`;
-            renderKLineChart(item.symbol);
+            document.getElementById('current-chart-title').innerHTML = `<i class="fa-solid fa-chart-candlestick"></i> ${item.name} (${item.symbol}) - ${currentPeriod}全週期 K 線與技術指標圖`;
+            renderKLineChart(item.symbol, currentPeriod);
         });
 
         tbody.appendChild(tr);
     });
 }
 
-// 3. ECharts K線與技術指標渲染
-function renderKLineChart(symbol) {
+function renderKLineChart(symbol, period) {
     const chartDom = document.getElementById('kline-chart-container');
     if (!chartDom) return;
     let myChart = echarts.getInstanceByDom(chartDom);
@@ -102,32 +113,54 @@ function renderKLineChart(symbol) {
     const dates = [];
     const kdata = [];
     const volumes = [];
-    let price = (symbol === 'TX00.FITX') ? 22000 : (symbol === '2330.TW' ? 950 : 200);
+    const ma5Data = [];
+    const ma20Data = [];
 
-    for (let i = 60; i >= 0; i--) {
-        const date = new Date(Date.now() - i * 86400000).toISOString().split('T')[0];
+    let price = (symbol === 'TX00.FITX') ? 22000 : (symbol === '2330.TW' ? 950 : 1200);
+    const count = period === '5分K' ? 100 : (period === '60分K' ? 80 : 60);
+
+    for (let i = count; i >= 0; i--) {
+        const date = new Date(Date.now() - i * (period === '5分K' ? 300000 : (period === '60分K' ? 3600000 : 86400000)))
+            .toISOString().replace('T', ' ').substring(0, period === '日K' ? 10 : 16);
         dates.push(date);
         
         const open = price;
-        const change = (Math.random() - 0.48) * (price * 0.03);
+        const change = (Math.random() - 0.47) * (price * 0.025);
         const close = open + change;
-        const high = Math.max(open, close) + Math.random() * (price * 0.015);
-        const low = Math.min(open, close) - Math.random() * (price * 0.015);
-        const vol = Math.floor(10000 + Math.random() * 50000);
+        const high = Math.max(open, close) + Math.random() * (price * 0.012);
+        const low = Math.min(open, close) - Math.random() * (price * 0.012);
+        const vol = Math.floor(10000 + Math.random() * 40000);
 
         kdata.push([open, close, low, high]);
-        volumes.push([60 - i, vol, open > close ? -1 : 1]);
+        volumes.push([count - i, vol, open > close ? -1 : 1]);
         price = close;
+    }
+
+    // 計算 MA5 與 MA20
+    for (let i = 0; i < kdata.length; i++) {
+        if (i < 4) {
+            ma5Data.push('-');
+        } else {
+            let sum = 0;
+            for (let j = 0; j < 5; j++) sum += kdata[i - j][1];
+            ma5Data.push((sum / 5).toFixed(2));
+        }
+
+        if (i < 19) {
+            ma20Data.push('-');
+        } else {
+            let sum = 0;
+            for (let j = 0; j < 20; j++) sum += kdata[i - j][1];
+            ma20Data.push((sum / 20).toFixed(2));
+        }
     }
 
     const option = {
         backgroundColor: 'transparent',
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: { type: 'cross' }
-        },
+        tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+        legend: { data: ['K線', 'MA5均線', 'MA20均線'], textStyle: { color: '#F3F4F6' } },
         grid: [
-            { left: '8%', right: '5%', top: '10%', height: '55%' },
+            { left: '8%', right: '5%', top: '12%', height: '55%' },
             { left: '8%', right: '5%', top: '72%', height: '20%' }
         ],
         xAxis: [
@@ -140,6 +173,7 @@ function renderKLineChart(symbol) {
         ],
         series: [
             {
+                name: 'K線',
                 type: 'candlestick',
                 data: kdata,
                 itemStyle: {
@@ -148,6 +182,20 @@ function renderKLineChart(symbol) {
                     borderColor: '#FF3B69',
                     borderColor0: '#00E676'
                 }
+            },
+            {
+                name: 'MA5均線',
+                type: 'line',
+                data: ma5Data,
+                smooth: true,
+                lineStyle: { color: '#00F2FE', width: 2 }
+            },
+            {
+                name: 'MA20均線',
+                type: 'line',
+                data: ma20Data,
+                smooth: true,
+                lineStyle: { color: '#FFD700', width: 2 }
             },
             {
                 name: '成交量',
@@ -165,7 +213,6 @@ function renderKLineChart(symbol) {
     myChart.setOption(option);
 }
 
-// 4. 智慧選股雷達卡片
 function renderRobotCards() {
     const container = document.getElementById('robot-cards-container');
     if (!container) return;
@@ -217,7 +264,6 @@ function renderRobotCards() {
     });
 }
 
-// 5. C++ 回測圖表
 function renderBacktestChart() {
     const chartDom = document.getElementById('equity-chart-container');
     if (!chartDom) return;
@@ -265,7 +311,6 @@ function renderBacktestChart() {
     });
 }
 
-// 6. 渲染消息面新聞列表
 function renderNewsFeed() {
     const container = document.getElementById('news-feed-container');
     if (!container) return;
@@ -287,7 +332,6 @@ function renderNewsFeed() {
     });
 }
 
-// 7. CRUD 數據管理
 function renderCrudTable() {
     const tbody = document.getElementById('crud-table-body');
     if (!tbody) return;
@@ -317,7 +361,6 @@ function renderCrudTable() {
     });
 }
 
-// 8. Telegram 設定事件
 function initTelegramEvents() {
     const testBtn = document.getElementById('test-tg-btn');
     const msgDiv = document.getElementById('tg-status-msg');
