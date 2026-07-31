@@ -4,6 +4,17 @@
 
 ---
 
+## [v0.2.0] - 2026-07-31
+
+### 新增 (Added)
+- **規則 11 追加**：於 [`PROJECT_RULES.md`](file:///e:/Rot/PROJECT_RULES.md) 新增跨裝置對話同步規則。
+- **對話歷史紀錄檔**：建立 [`CONVERSATION_HISTORY.md`](file:///e:/Rot/CONVERSATION_HISTORY.md)，讓其他電腦 clone/pull 後亦可完整繼承對話脈絡。
+
+### 備註 (Notes)
+- 已 Commit 並自動合併至 **main** 分支。
+
+---
+
 ## [v0.1.0] - 2026-07-31
 
 ### 新增 (Added)

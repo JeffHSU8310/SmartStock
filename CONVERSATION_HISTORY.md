@@ -1,0 +1,24 @@
+# 專案跨對話脈絡紀錄 (CONVERSATION_HISTORY.md)
+
+本文件自動同步與紀錄專案的所有重要對話需求、決策與歷程，即使將專案複製或 Git Push/Pull 到**其他電腦**上開啟新對話，AI 亦能自動抓取並銜接歷史紀錄。
+
+---
+
+## 📜 對話紀錄歷程
+
+### 📌 [記錄時間: 2026-07-31] - 專案規則確立與跨裝置歷史同步機制建立
+
+- **使用者需求 (User Prompt)**:
+  1. 訂定 10 大專案核心規則（繁體中文、重點粗體、C++開發、謹慎撰寫、自我除錯、沙盒模擬、缺資料告知、版本紀錄、自動抓取紀錄、自動合併至 main）。
+  2. 額外追加第 11 條規則：**在其他電腦中，也能抓取並看到這個專案下的對話紀錄**。
+
+- **系統處理與決策 (System Action & Decision)**:
+  - 於 Git 儲存庫建立 [`PROJECT_RULES.md`](file:///e:/Rot/PROJECT_RULES.md)，完整載明 11 大核心規則。
+  - 建立 [`CONVERSATION_HISTORY.md`](file:///e:/Rot/CONVERSATION_HISTORY.md) 將對話歷程、變更決策文字化並隨儲存庫版本控管。
+  - 當儲存庫推送到 GitHub 或在其他電腦 Clone 下來後，任何 AI 對話皆能藉由讀取 `CONVERSATION_HISTORY.md` 與 `CHANGELOG.md` 完美重現先前對話內容與專案進度。
+  - 所有變更皆已 Commit 並合併至 `main` 分支。
+
+- **當前專案狀態**:
+  - **核心語言**: C++ (輔助 Python 3.14)
+  - **當前版本**: v0.2.0
+  - **Git 分支**: main
