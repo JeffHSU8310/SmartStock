@@ -4,6 +4,23 @@
 
 ---
 
+## [v1.0.0] - 2026-07-31
+
+### 重大功能發布 (Major Feature Release)
+- **台灣智慧機器人選股與回測系統正式上線**：
+  - **市場全覆蓋**：全面支援上市(TWSE)、上櫃(TPEx)與台指期貨/選擇權(TAIFEX)。
+  - **四大面數據架構**：整合基本面（營收/財務）、籌碼面（三大法人/大股東）、技術面（K線/型態/指標）、消息面（新聞/情感評分）。
+  - **智慧機器人選股**：多維度評分模型，自動選出強勢標的。
+  - **C++ 事件驅動回測引擎**：高效計算勝率、年化報酬、Sharpe Ratio、最大回撤 MDD。
+  - **數據 CRUD 控制器**：支援資料庫讀取、修改、新增與刪除。
+  - **Telegram 即時推播**：整合 Bot API 自動傳送訊號警報至手機。
+  - **獨立執行檔 (.exe)**：通過沙盒 GCC 16.1.0 編譯與測試（`build/TaiwanSmartQuant.exe`）。
+
+### 備註 (Notes)
+- 已 Commit 並自動同步至 **origin/main**。
+
+---
+
 ## [v0.4.0] - 2026-07-31
 
 ### 環境成就 (Environment Accomplished)
@@ -24,30 +41,12 @@
   - 排除 `choco install mingw` 因權限不足導致 `C:\ProgramData\chocolatey\lib-bad` 存取被拒錯誤。
   - 自動於沙盒進行 `WinLibs MinGW GCC 16.1.0` 免管理員權限安裝。
 
-### 備註 (Notes)
-- 已 Commit 並自動同步至 **origin/main**。
-
 ---
 
 ## [v0.3.1] - 2026-07-31
 
 ### 同步與發布 (Synced & Pushed)
 - **GitHub 同步**：成功將包含專案規則、對話歷史與版本紀錄之全部變更推送至 GitHub `https://github.com/JeffHSU8310/Rot.git` 的 `main` 分支。
-
-### 備註 (Notes)
-- 已 Commit 並同步至 **origin/main**。
-
----
-
-## [v0.3.0] - 2026-07-31
-
-### 新增與設定 (Added & Configured)
-- **GitHub 儲存庫位置**：於 [`PROJECT_RULES.md`](file:///e:/Rot/PROJECT_RULES.md) 明確標註 GitHub 儲存庫網址 `https://github.com/JeffHSU8310/Rot.git`。
-- **Git Remote 設定**：設定本地 Git `origin` 指向 `https://github.com/JeffHSU8310/Rot.git`。
-- **對話歷史更新**：更新 [`CONVERSATION_HISTORY.md`](file:///e:/Rot/CONVERSATION_HISTORY.md) 紀錄 GitHub 網址連結。
-
-### 備註 (Notes)
-- 已 Commit 並自動合併至 **main** 分支。
 
 ---
 
@@ -57,9 +56,6 @@
 - **規則 11 追加**：於 [`PROJECT_RULES.md`](file:///e:/Rot/PROJECT_RULES.md) 新增跨裝置對話同步規則。
 - **對話歷史紀錄檔**：建立 [`CONVERSATION_HISTORY.md`](file:///e:/Rot/CONVERSATION_HISTORY.md)，讓其他電腦 clone/pull 後亦可完整繼承對話脈絡。
 
-### 備註 (Notes)
-- 已 Commit 並自動合併至 **main** 分支。
-
 ---
 
 ## [v0.1.0] - 2026-07-31
@@ -68,6 +64,3 @@
 - **專案初始化**：建立 Git 儲存庫並設置 `main` 為主要分支。
 - **重點規則設定**：建立 `PROJECT_RULES.md` 紀錄 10 大核心規則。
 - **版本紀錄機制**：建立 `CHANGELOG.md` 規範跨對話版本管理。
-
-### 備註 (Notes)
-- 已合併至 **main** 分支。
