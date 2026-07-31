@@ -13,30 +13,30 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <shellapi.h>
 #endif
 
 using namespace TaiwanQuant;
 
 void printHeader() {
     std::cout << "========================================================\n"
-              << "  台灣智慧機器人選股與回測系統 (TaiwanSmartQuant v1.0.2)\n"
+              << "  🇹🇼 台灣智慧機器人選股與回測系統 (TaiwanSmartQuant v2.0 GUI)\n"
               << "  覆蓋市場: 上市(TWSE) | 上櫃(TPEX) | 台指期貨/選擇權(TAIFEX)\n"
               << "========================================================\n" << std::flush;
 }
 
-void printMenu() {
-    std::cout << "\n【軟體功能選單】\n"
-              << "1. 查看看盤行情列表 (三竹風格看盤大廳)\n"
-              << "2. 執行智慧機器人選股 (四大面綜合評分與篩選)\n"
-              << "3. 執行 C++ 高效能策略回測 (Sharpe, MDD, 勝率)\n"
-              << "4. 數據資料庫管理 (新增/編輯/刪除 基本面/籌碼面/K線)\n"
-              << "5. 測試 Telegram 即時推播警報至手機\n"
-              << "6. 結束系統\n"
-              << "請選擇功能 [1-6]: " << std::flush;
+void launchGUIWindow() {
+    std::cout << "\n🚀 [GUI 模式開啟中] 正在啟動炫彩高階視窗介面...\n" << std::flush;
+    #ifdef _WIN32
+    // 自動開啟 Windows 高階視窗載入炫彩 GUI index.html
+    char cwd[MAX_PATH];
+    GetCurrentDirectoryA(MAX_PATH, cwd);
+    std::string htmlPath = std::string(cwd) + "\\gui\\index.html";
+    ShellExecuteA(NULL, "open", htmlPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
+    #endif
 }
 
 int main() {
-    // Windows 控制台繁體中文 UTF-8 編碼切換
     #ifdef _WIN32
     SetConsoleOutputCP(65001);
     SetConsoleCP(65001);
@@ -44,7 +44,7 @@ int main() {
     #endif
 
     StorageEngine storage;
-    storage.generateSampleData(); // 載入上市/上櫃/期貨數據庫
+    storage.generateSampleData(); // 載入數據庫
 
     RobotSelector robot(storage);
     BacktestEngine backtester(storage);
@@ -52,39 +52,26 @@ int main() {
 
     printHeader();
 
+    // 預設自動啟動 GUI 炫彩視覺視窗介面
+    launchGUIWindow();
+
+    std::cout << "\n軟體已於 GUI 視窗中運行，亦可於主控制台輸入選單代碼 [1-6] 控制：\n";
+    std::cout << "1. 📊 打開 GUI 看盤大廳\n"
+              << "2. 🤖 執行智慧機器人選股\n"
+              << "3. 📈 執行 C++ 回測引擎\n"
+              << "4. 🛠️ 數據資料庫 CRUD 管理\n"
+              << "5. 📱 測試 Telegram 手機推播\n"
+              << "6. ❌ 關閉系統\n";
+
     int choice = 0;
     while (true) {
-        printMenu();
+        std::cout << "\n請選擇指令 [1-6]: " << std::flush;
         if (!(std::cin >> choice)) {
             break;
         }
 
         if (choice == 1) {
-            std::cout << "\n=================== 看盤大廳行情列表 ===================\n";
-            std::cout << std::left << std::setw(12) << "代號/名稱"
-                      << std::setw(18) << "市場"
-                      << std::setw(10) << "最新價"
-                      << std::setw(10) << "MA5"
-                      << std::setw(10) << "RSI(14)"
-                      << std::setw(10) << "KD(K)"
-                      << std::setw(20) << "K線型態" << "\n";
-            std::cout << "-----------------------------------------------------------------------------------\n";
-
-            for (const auto& sym : storage.getAllSymbols()) {
-                auto kbars = storage.getKBars(sym, PeriodType::DAILY);
-                if (kbars.empty()) continue;
-                auto tech = TechnicalAnalysis::getLatestIndicators(kbars);
-                std::string mktStr = (sym.find(".FITX") != std::string::npos) ? "台指期貨(TAIFEX)" : "上市股票(TWSE)";
-
-                std::cout << std::left << std::setw(12) << sym
-                          << std::setw(18) << mktStr
-                          << std::setw(10) << kbars.back().close
-                          << std::setw(10) << static_cast<int>(tech.ma5)
-                          << std::setw(10) << static_cast<int>(tech.rsi14)
-                          << std::setw(10) << static_cast<int>(tech.kdK)
-                          << std::setw(20) << tech.patternName << "\n";
-            }
-            std::cout << std::flush;
+            launchGUIWindow();
         } else if (choice == 2) {
             std::cout << "\n=================== 智慧機器人選股結果 ===================\n";
             auto signals = robot.runSmartSelection();
@@ -97,50 +84,27 @@ int main() {
                     tgBot.sendSignalNotification(sig);
                 }
             }
-            std::cout << std::flush;
         } else if (choice == 3) {
             std::cout << "\n=================== C++ 策略回測引擎 ===================\n";
-            std::string targetSymbol = "2330.TW";
-            std::cout << "正在對 " << targetSymbol << " 進行歷史事件驅動回測...\n";
-            auto result = backtester.runBacktest(targetSymbol, 1000000.0);
-            
-            std::cout << "策略名稱: " << result.strategyName << "\n";
-            std::cout << "總報酬率: " << result.totalReturn << " %\n";
-            std::cout << "年化報酬: " << result.annualizedReturn << " %\n";
-            std::cout << "勝率    : " << result.winRate << " % (" << result.winningTrades << "/" << result.totalTrades << " 勝)\n";
-            std::cout << "最大回撤: " << result.maxDrawdown << " %\n";
-            std::cout << "夏普比率: " << result.sharpeRatio << "\n";
-            std::cout << "獲利因子: " << result.profitFactor << "\n";
-
+            auto result = backtester.runBacktest("2330.TW", 1000000.0);
+            std::cout << "策略名稱: " << result.strategyName << "\n"
+                      << "總報酬率: " << result.totalReturn << " %\n"
+                      << "年化報酬: " << result.annualizedReturn << " %\n"
+                      << "勝率    : " << result.winRate << " %\n"
+                      << "最大回撤: " << result.maxDrawdown << " %\n"
+                      << "夏普比率: " << result.sharpeRatio << "\n";
             tgBot.sendBacktestReport(result);
-            std::cout << std::flush;
         } else if (choice == 4) {
-            std::cout << "\n=================== 資料庫數據 CRUD 管理 ===================\n";
-            std::cout << "1. 編輯個股基本面營收數據\n";
-            std::cout << "2. 刪除指定標的數據庫快取\n";
-            std::cout << "請選擇功能 [1-2]: " << std::flush;
-            int subChoice = 0;
-            if (std::cin >> subChoice) {
-                if (subChoice == 1) {
-                    FundamentalData fund{"2330.TW", "2026-07-31", 230000.0, 8.5, 22.0, 42.0, 22.1, 5.5, 30.0, 18.0, 55.0, 3.2};
-                    storage.saveFundamental(fund);
-                    std::cout << " [修改成功] 已更新 台積電(2330.TW) 最新月營收與基本面數據！\n";
-                } else if (subChoice == 2) {
-                    storage.deleteFundamental("2454.TW");
-                    std::cout << " [刪除成功] 已清除 聯發科(2454.TW) 舊數據快取！\n";
-                }
-            }
-            std::cout << std::flush;
+            std::cout << "\n=================== 數據 CRUD 管理 ===================\n";
+            FundamentalData fund{"2330.TW", "2026-07-31", 230000.0, 8.5, 22.0, 42.0, 22.1, 5.5, 30.0, 18.0, 55.0, 3.2};
+            storage.saveFundamental(fund);
+            std::cout << "✅ [修改成功] 已更新 台積電(2330.TW) 最新基本面數據！\n";
         } else if (choice == 5) {
-            std::cout << "\n=================== Telegram 即時推播測試 ===================\n";
             Signal testSig{"2330.TW", "台積電", MarketType::TWSE_STOCK, "2026-07-31 13:30:00", "BUY", 92.5, "四大面多頭共振，籌碼三大法人同步大買！", 1020.0};
             tgBot.sendSignalNotification(testSig);
-            std::cout << std::flush;
         } else if (choice == 6) {
-            std::cout << "\n感謝使用 台灣智慧機器人選股與回測系統，系統安全關閉中...\n" << std::flush;
+            std::cout << "\n系統安全關閉中...\n";
             break;
-        } else {
-            std::cout << "無效選擇，請重新輸入。\n" << std::flush;
         }
     }
 
