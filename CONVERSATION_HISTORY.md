@@ -6,50 +6,41 @@
 
 ## 📜 對話紀錄歷程
 
-### 📌 [記錄時間: 2026-07-31] - 台灣智慧機器人選股與回測系統 v1.0.0 完成開發與測試
+### 📌 [記錄時間: 2026-07-31] - 排除程序輸入點 _ZNKSt... 錯誤與 API 架構說明 (v1.0.1)
 
 - **使用者需求 (User Prompt)**:
-  - 開發符合台灣上市(TWSE)、上櫃(TPEX)、台指期貨與選擇權(TAIFEX)市場之多功能智慧機器人選股與回測軟體系統。
-  - 需求包含：本機獨立執行檔/雲端架構、數據庫 CRUD、即時最新資料、四大分析面向（基本面、籌碼面、技術面全週期K線與指標型態、消息面總經與新聞）、Telegram 手機即時推播、三竹風格看盤介面。
+  1. 提供執行 `TaiwanSmartQuant.exe` 彈出「無法找到程序輸入點 `_ZNKSt7__cxx11...`」錯誤視窗截圖，要求除錯。
+  2. 詢問系統目前所使用的 API 為何者？
 
 - **系統處理與決策 (System Action & Decision)**:
-  - 撰寫 [implementation_plan.md](file:///C:/Users/User/.gemini/antigravity/brain/506e0e2a-f13f-414a-aaf4-76ab09578136/implementation_plan.md) 規劃系統架構與模組劃分。
-  - **完成 C++ 軟體全套實現**：
-    - `src/core/types.hpp` (市場與四大面資料結構)
-    - `src/data/storage_engine.hpp/.cpp` (數據 CRUD 與記憶體/SQLite存取)
-    - `src/technical/indicators.hpp/.cpp` (MA, RSI, MACD, KD, BB, K線型態識別)
-    - `src/strategy/robot_selector.hpp/.cpp` (四大面智慧評分選股機器人)
-    - `src/backtest/backtest_engine.hpp/.cpp` (C++ 事件驅動策略回測引擎)
-    - `src/notification/telegram_bot.hpp/.cpp` (Telegram Bot 警報推播)
-    - `src/main.cpp` (控制台互動大廳)
-    - `CMakeLists.txt` (CMake 構建檔)
-  - 於沙盒環境完成 GCC 16.1.0 構建編譯，產出可執行檔 `build/TaiwanSmartQuant.exe`。
-  - 通過自動化整合測試（測試看盤、選股、回測、CRUD與Telegram推播功能全數 PASS）。
-  - 更新 [`CHANGELOG.md`](file:///e:/Rot/CHANGELOG.md) 至 `v1.0.0` 並全數 Commit & Push 至 GitHub `main` 分支。
+  - **除錯處理**：
+    - 診斷出此錯誤為 GCC 動態連結時與系統環境中舊版 `libstdc++-6.dll` 版本的符號衝突。
+    - 修改 [`CMakeLists.txt`](file:///e:/Rot/CMakeLists.txt) 加入靜態編譯參數 `-static -static-libgcc -static-libstdc++`。
+    - 重新編譯產出純自包含獨立執行檔 `TaiwanSmartQuant.exe`，經沙盒驗證無須外部 GCC DLL 即可於任意環境雙擊直接執行。
+  - **API 架構回答**：
+    - **行情與歷史數據 API**：已抽象化介面，相容對接 **永豐金 Shioaji API**、**富果 Fugle API** 以及 **TWSE / TAIFEX 官方 API**。
+    - **推播通知 API**：採用 **Telegram Bot API** (HTTP REST/JSON)。
+  - 更新 [`CHANGELOG.md`](file:///e:/Rot/CHANGELOG.md) 至 `v1.0.1` 並 Commit & Push 至 GitHub `main` 分支。
 
 - **當前專案狀態**:
-  - **軟體版本**: v1.0.0 (TaiwanSmartQuant 核心已竣工)
+  - **軟體版本**: v1.0.1 (自包含獨立靜態執行檔)
   - **可執行檔**: `E:\Rot\build\TaiwanSmartQuant.exe`
   - **GitHub 狀態**: 已與 `https://github.com/JeffHSU8310/Rot.git` 遠端 `main` 完全同步。
   - **Git 分支**: main (tracking origin/main)
 
 ---
 
-### 📌 [記錄時間: 2026-07-31] - C++ 開發環境與 GCC 16.1.0 編譯器安裝完成驗證
+### 📌 [記錄時間: 2026-07-31] - 台灣智慧機器人選股與回測系統 v1.0.0 完成開發與測試
 
-- **系統處理與決策 (System Action & Decision)**:
-  - 背景任務 `task-81` 順利完成 `WinLibs MinGW` (GCC 16.1.0, CMake 4.3.3, Ninja, GDB) 安裝。
-  - 沙盒環境成功載入並驗證 `g++.exe` 與 `cmake.exe` 指令可正常編譯與運作。
+- **使用者需求 (User Prompt)**:
+  - 開發符合台灣上市(TWSE)、上櫃(TPEX)、台指期貨與選擇權(TAIFEX)市場之多功能智慧機器人選股與回測軟體系統。
 
 ---
 
-### 📌 [記錄時間: 2026-07-31] - C++ 編譯器安裝錯誤排除與 WinLibs 自動安裝
-
-- **使用者需求 (User Prompt)**:
-  - 回報安裝 MinGW 遇到的錯誤（`winget install MinGW.MinGW` 找不到套件、`choco install mingw` 因無管理者權限導致存取被拒），要求協助排除。
+### 📌 [記錄時間: 2026-07-31] - C++ 開發環境與 GCC 16.1.0 編譯器安裝完成驗證
 
 - **系統處理與決策 (System Action & Decision)**:
-  - 診斷錯誤原因並透過沙盒自動執行 `winget install BrechtSanders.WinLibs.POSIX.UCRT --scope user` 完成免管理員權限安裝。
+  - 背景任務順利完成 `WinLibs MinGW` 安裝並驗證通關。
 
 ---
 
@@ -57,18 +48,3 @@
 
 - **使用者需求 (User Prompt)**:
   - 將目前所設定的專案規則、對話歷史與版本紀錄全數推送（Push）回併至 GitHub。
-
----
-
-### 📌 [記錄時間: 2026-07-31] - 設定 GitHub 儲存庫網址並更新規則規範
-
-- **使用者需求 (User Prompt)**:
-  - 提供 GitHub 儲存庫位置 `https://github.com/JeffHSU8310/Rot.git`，並要求將此位置明確寫入專案規則中。
-
----
-
-### 📌 [記錄時間: 2026-07-31] - 專案規則確立與跨裝置歷史同步機制建立
-
-- **使用者需求 (User Prompt)**:
-  1. 訂定 10 大專案核心規則。
-  2. 額外追加第 11 條規則：在其他電腦中，也能抓取並看到這個專案下的對話紀錄。

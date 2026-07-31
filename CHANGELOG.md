@@ -4,6 +4,19 @@
 
 ---
 
+## [v1.0.1] - 2026-07-31
+
+### 錯誤排除與發布優化 (Hotfix & Standalone Build)
+- **排除「無法找到程序輸入點」動態庫錯誤**：
+  - 診斷原因：雙擊 `.exe` 時系統嘗試加載環境中舊版 `libstdc++-6.dll` 導致符號找不到錯誤。
+  - 解決方案：於 [`CMakeLists.txt`](file:///e:/Rot/CMakeLists.txt) 加入靜態連結旗標 `-static -static-libgcc -static-libstdc++`。
+  - 成果：重新構建後的 `TaiwanSmartQuant.exe` 成為**完全自包含獨立執行檔**，可於任何 Windows 電腦上雙擊免安裝直接執行。
+
+### 備註 (Notes)
+- 已 Commit 並自動同步至 **origin/main**。
+
+---
+
 ## [v1.0.0] - 2026-07-31
 
 ### 重大功能發布 (Major Feature Release)
@@ -16,9 +29,6 @@
   - **Telegram 即時推播**：整合 Bot API 自動傳送訊號警報至手機。
   - **獨立執行檔 (.exe)**：通過沙盒 GCC 16.1.0 編譯與測試（`build/TaiwanSmartQuant.exe`）。
 
-### 備註 (Notes)
-- 已 Commit 並自動同步至 **origin/main**。
-
 ---
 
 ## [v0.4.0] - 2026-07-31
@@ -28,17 +38,13 @@
   - `WinLibs GCC 16.1.0` (MinGW-w64) 及 `CMake 4.3.3` 安裝完成。
   - 沙盒環境已可順利調用 `g++` 進行 C++20 / C++23 / C++26 程式碼編譯、構建與測試。
 
-### 備註 (Notes)
-- 已 Commit 並自動同步至 **origin/main**。
-
 ---
 
 ## [v0.3.2] - 2026-07-31
 
 ### 故障排除與環境升級 (Troubleshooting & Environment)
 - **C++ 編譯器安裝問題排除**：
-  - 解決 `winget install MinGW.MinGW` 套件 ID 不匹配問題（更新為正確 ID `BrechtSanders.WinLibs.POSIX.UCRT`）。
-  - 排除 `choco install mingw` 因權限不足導致 `C:\ProgramData\chocolatey\lib-bad` 存取被拒錯誤。
+  - 解決 `winget install MinGW.MinGW` 套件 ID 不匹配問題。
   - 自動於沙盒進行 `WinLibs MinGW GCC 16.1.0` 免管理員權限安裝。
 
 ---

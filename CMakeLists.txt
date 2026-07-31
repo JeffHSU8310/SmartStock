@@ -17,9 +17,10 @@ set(SOURCES
 
 add_executable(TaiwanSmartQuant ${SOURCES})
 
-# Windows UTF-8 設定
-if(MSVC)
-    target_compile_options(TaiwanSmartQuant PRIVATE /utf-8)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+# 靜態連結 C++ 標準庫與 GCC 運行庫，消除 DLL 相依性與「無法找到程序輸入點」錯誤
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(TaiwanSmartQuant PRIVATE -Wall -Wextra)
+    target_link_options(TaiwanSmartQuant PRIVATE -static -static-libgcc -static-libstdc++ -pthread)
+elseif(MSVC)
+    target_compile_options(TaiwanSmartQuant PRIVATE /utf-8)
 endif()
