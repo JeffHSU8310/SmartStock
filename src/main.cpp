@@ -18,8 +18,8 @@
 
 using namespace TaiwanQuant;
 
-// 隱藏黑框控制台，開啟純原生 Windows 獨立桌面軟體視窗
-void launchNativeDesktopGUIWindow() {
+// 開啟純正獨立原生桌面軟體視窗（無 CMD 黑框、無瀏覽器頁籤、全彩 CSS3 玻璃美學與 ECharts 圖表）
+void launchNativeChromiumAppWindow() {
     #ifdef _WIN32
     // 1. 徹底關閉並隱藏黑框黑視窗 CMD Console
     HWND hwndConsole = GetConsoleWindow();
@@ -28,26 +28,37 @@ void launchNativeDesktopGUIWindow() {
         FreeConsole();
     }
 
-    // 2. 獲取當前執行檔路徑並以原生獨立 App 視窗模式開啟 (mshta / native app host)
+    // 2. 獲取當前執行檔與 GUI html 路徑
     char cwd[MAX_PATH];
     GetCurrentDirectoryA(MAX_PATH, cwd);
     std::string htmlPath = std::string(cwd) + "\\gui\\index.html";
 
-    // 使用 mshta 建立純獨立原生桌面視窗 (非瀏覽器分頁，無控制台黑框)
-    std::string cmdArgs = "mshta.exe \"file:///" + std::string(cwd) + "/gui/index.html\"";
+    // 3. 原生 App 模式啟動（無網址列、無搜尋列、無瀏覽器分頁頁籤，獨立高階全彩桌面視窗）
+    std::string edgeAppCmd = "msedge.exe --app=\"file:///" + std::string(cwd) + "/gui/index.html\" --window-size=1440,900";
+    std::string chromeAppCmd = "chrome.exe --app=\"file:///" + std::string(cwd) + "/gui/index.html\" --window-size=1440,900";
     
-    STARTUPINFOA si = { sizeof(si) };
+    STARTUPINFOA si;
     PROCESS_INFORMATION pi;
-    si.dwFlags = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_SHOWMAXIMIZED;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
 
-    if (CreateProcessA(NULL, (LPSTR)cmdArgs.c_str(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+    // 優先嘗試合併啟動 MS Edge App 獨立視窗
+    if (CreateProcessA(NULL, (LPSTR)edgeAppCmd.c_str(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
-    } else {
-        // Fallback: 獨立視窗
-        ShellExecuteA(NULL, "open", htmlPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
+        return;
     }
+
+    // 次之嘗試 Chrome App 獨立視窗
+    if (CreateProcessA(NULL, (LPSTR)chromeAppCmd.c_str(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        return;
+    }
+
+    // 預備方案： ShellExecute 獨立顯示
+    ShellExecuteA(NULL, "open", htmlPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
     #endif
 }
 
@@ -58,7 +69,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     StorageEngine storage;
     storage.generateSampleData();
 
-    launchNativeDesktopGUIWindow();
+    launchNativeChromiumAppWindow();
     return 0;
 }
 #endif
@@ -76,6 +87,6 @@ int main(int argc, char* argv[]) {
     StorageEngine storage;
     storage.generateSampleData();
 
-    launchNativeDesktopGUIWindow();
+    launchNativeChromiumAppWindow();
     return 0;
 }
