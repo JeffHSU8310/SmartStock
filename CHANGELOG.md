@@ -4,23 +4,29 @@
 
 ---
 
-## [v3.1.0] - 2026-07-31
+## [v4.0.0] - 2026-07-31
 
-### 原生全彩視窗修復與離線圖表整合 (Native App Window & Offline ECharts)
-- **修復 MSHTA 舊版 IE 兼向導致白屏與 Script Error 問題**：
-  - 診斷原因：傳統 MSHTA 採用舊版 IE 引擎，不支援現代 CSS3 (flex/grid/var) 與 CDN JS，導致彈出「指令碼錯誤」對話框且畫面白屏無色彩。
-  - **解決方案**：
-    1. 於 [`main.cpp`](file:///e:/Rot/src/main.cpp) 升級為 **Native Chromium App Mode (`--app="file:///..."`)** 原生啟動模式。
-       - **無黑框 CMD 控制台** (0 Console Window)
-       - **無瀏覽器網址列、無搜尋列**
-       - **無瀏覽器分頁頁籤 (0 Browser Tabs)**
-       - **100% 獨立高階全彩桌面應用程式視窗**！
-    2. 下載並本地整合 [`gui/echarts.min.js`](file:///e:/Rot/gui/echarts.min.js)，離線完美渲染 60fps 燭台 K 線圖與資產權益圖，徹底消除 Script Error。
-- **最新發布綠色封裝包 (v3.1.0 Release)**：
-  - 打包發布獨立綠色壓縮包 [`TaiwanSmartQuant_v3.1_NativeGUI_Standalone.zip`](file:///e:/Rot/TaiwanSmartQuant_v3.1_NativeGUI_Standalone.zip) 與發布目錄 [`dist/TaiwanSmartQuant_v3.1_NativeGUI_Standalone`](file:///e:/Rot/dist/TaiwanSmartQuant_v3.1_NativeGUI_Standalone)。
+### 規則 12 追加與 C++/Python 雙引擎純原生 GUI 軟體發布 (Dual-Engine Native GUI Release)
+- **寫入規則 12 於 [`PROJECT_RULES.md`](file:///e:/Rot/PROJECT_RULES.md)**：
+  - 核心原則：**C++ 語言掌管核心計算與架構，Python 語言作為輔助開發（原生桌面 GUI 視窗軟體與對接）**。
+- **純原生獨立桌面軟體 (Pure Native Desktop Software Window)**：
+  - 採用 `pywebview` + Microsoft Edge Native Window Host 引擎，於 [`src/gui_host.py`](file:///e:/Rot/src/gui_host.py) 建立原生視窗。
+  - **0 CMD 黑框** (無命令列終端機視窗)
+  - **0 瀏覽器分頁 (無 Chrome/Edge 網頁分頁頁籤，無網址列，無搜尋列)**
+  - **100% 純正獨立桌面應用程式視窗**！
+- **全新獨立執行檔與發布綠色封裝 (v4.0.0 Release)**：
+  - 打包生成單一獨立執行檔 [`dist/TaiwanSmartQuant_GUI.exe`](file:///e:/Rot/dist/TaiwanSmartQuant_GUI.exe) 與綠色封裝包 [`TaiwanSmartQuant_v4.0_NativeGUI_Standalone.zip`](file:///e:/Rot/TaiwanSmartQuant_v4.0_NativeGUI_Standalone.zip)。
+  - 100% 離線渲染深色玻璃美學、三竹風格行情列表、ECharts K線圖、選股雷達與回測圖表。
 
 ### 備註 (Notes)
 - 已 Commit 並自動同步至 **origin/main**。
+
+---
+
+## [v3.1.0] - 2026-07-31
+
+### 原生全彩視窗修復與離線圖表整合 (Native App Window & Offline ECharts)
+- 修復 MSHTA 舊版 IE 兼向導致白屏與 Script Error 問題。
 
 ---
 
