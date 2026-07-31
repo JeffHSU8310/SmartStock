@@ -4,6 +4,16 @@
 
 ---
 
+## [v0.3.1] - 2026-07-31
+
+### 同步與發布 (Synced & Pushed)
+- **GitHub 同步**：成功將包含專案規則、對話歷史與版本紀錄之全部變更推送至 GitHub `https://github.com/JeffHSU8310/Rot.git` 的 `main` 分支。
+
+### 備註 (Notes)
+- 已 Commit 並同步至 **origin/main**。
+
+---
+
 ## [v0.3.0] - 2026-07-31
 
 ### 新增與設定 (Added & Configured)

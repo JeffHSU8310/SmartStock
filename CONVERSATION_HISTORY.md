@@ -6,6 +6,24 @@
 
 ## 📜 對話紀錄歷程
 
+### 📌 [記錄時間: 2026-07-31] - 將規則與歷史紀錄成功併入 GitHub 遠端 main 分支
+
+- **使用者需求 (User Prompt)**:
+  - 將目前所設定的專案規則、對話歷史與版本紀錄全數推送（Push）回併至 GitHub。
+
+- **系統處理與決策 (System Action & Decision)**:
+  - 執行 `git push -u origin main`，成功將 `main` 分支推送到 GitHub Remote (`https://github.com/JeffHSU8310/Rot.git`)。
+  - 更新版本紀錄檔案 [`CHANGELOG.md`](file:///e:/Rot/CHANGELOG.md) 至 `v0.3.1`。
+  - 再次提交 Commit 並同步 push 至遠端 `main` 分支。
+
+- **當前專案狀態**:
+  - **GitHub 狀態**: 已與 `https://github.com/JeffHSU8310/Rot.git` 遠端 `main` 完全同步。
+  - **核心語言**: C++ (輔助 Python 3.14)
+  - **當前版本**: v0.3.1
+  - **Git 分支**: main (tracking origin/main)
+
+---
+
 ### 📌 [記錄時間: 2026-07-31] - 設定 GitHub 儲存庫網址並更新規則規範
 
 - **使用者需求 (User Prompt)**:
@@ -16,12 +34,6 @@
   - 於 [`PROJECT_RULES.md`](file:///e:/Rot/PROJECT_RULES.md) 新增專案儲存庫資訊區塊，並將 URL 寫入規則 10 與 11 中。
   - 更新版本紀錄檔案 [`CHANGELOG.md`](file:///e:/Rot/CHANGELOG.md) 至 `v0.3.0`。
   - 將所有變更 Commit 並合併至 `main` 分支。
-
-- **當前專案狀態**:
-  - **GitHub Remote**: `https://github.com/JeffHSU8310/Rot.git`
-  - **核心語言**: C++ (輔助 Python 3.14)
-  - **當前版本**: v0.3.0
-  - **Git 分支**: main
 
 ---
 
