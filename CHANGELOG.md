@@ -4,19 +4,25 @@
 
 ---
 
-## [v2.0.0] - 2026-07-31
+## [v2.1.0] - 2026-07-31
 
-### 炫彩 GUI 視窗軟體重大升級 (Major GUI Release)
-- **全新高階深色玻璃 (Dark Glassmorphism) 視覺介面**：
-  - **看盤大廳 (Market Dashboard)**：三竹風格彩色行情列表 + 交互式 ECharts K線圖與成交量圖表。
-  - **智慧選股雷達 (Robot Selector)**：四大面（基本面/籌碼面/技術面/消息面）綜合評分雷達卡片與排行榜。
-  - **C++ 回測儀表板 (Backtest Station)**：策略資產權益曲線圖 (Equity Curve)、勝率、MDD 儀表、Sharpe Ratio 展示。
-  - **數據 CRUD 與推播管理**：提供數據管理表格與 Telegram Bot 手機一鍵測試發送。
-- **自動化視窗啟動引導**：
-  - 雙擊執行 [`TaiwanSmartQuant.exe`](file:///e:/Rot/build/TaiwanSmartQuant.exe) 將自動啟動炫彩 GUI 視窗介面。
+### 全彩控制台與自包含發布打包 (ANSI Colorful Terminal & Package)
+- **C++ 控制台全彩 VT100 ANSI 視覺化**：
+  - 開啟 Windows 控制台 VT100 虛擬終端能力 (`ENABLE_VIRTUAL_TERMINAL_PROCESSING`)。
+  - 控制台輸出採用**台灣市場專屬色彩**：上漲/買進亮**炫彩台股紅 (`\033[1;31m`)**，下跌/賣出亮**極光翡翠綠 (`\033[1;32m`)**，標題/選單亮**霓虹青 (`\033[1;36m`)**，評分亮**金黃 (`\033[1;33m`)**。
+- **發布打包獨立綠色封裝 (Standalone Distribution)**：
+  - 打包生成獨立免安裝綠色包 [`dist/TaiwanSmartQuant_v2.1_Standalone`](file:///e:/Rot/dist/TaiwanSmartQuant_v2.1_Standalone) 與 [`TaiwanSmartQuant_v2.1_Standalone.zip`](file:///e:/Rot/TaiwanSmartQuant_v2.1_Standalone.zip)。
+  - 包含 C++ 純自包含 `.exe` 與全彩 HTML5/CSS3/JS GUI 資源，解壓即可雙擊執行全彩版軟體！
 
 ### 備註 (Notes)
 - 已 Commit 並自動同步至 **origin/main**。
+
+---
+
+## [v2.0.0] - 2026-07-31
+
+### 炫彩 GUI 視窗軟體重大升級 (Major GUI Release)
+- **全新高階深色玻璃 (Dark Glassmorphism) 視覺介面**。
 
 ---
 

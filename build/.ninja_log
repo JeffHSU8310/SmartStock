@@ -27,3 +27,11 @@
 8	3472	8071928005649557	CMakeFiles/TaiwanSmartQuant.dir/src/data/storage_engine.cpp.obj	42d5d3b52a2d9bdd
 33	4602	8071928005900010	CMakeFiles/TaiwanSmartQuant.dir/src/main.cpp.obj	bcf1d5a94b091b5b
 4603	5766	8071928051589219	TaiwanSmartQuant.exe	90c2de77ea06605
+3	114	8071930423299660	clean	8cbe23d05954c8d2
+28	2048	8071930424812456	CMakeFiles/TaiwanSmartQuant.dir/src/notification/telegram_bot.cpp.obj	7b5ddd7f4e58992a
+19	2420	8071930424711605	CMakeFiles/TaiwanSmartQuant.dir/src/strategy/robot_selector.cpp.obj	12a7a3821b076185
+14	2465	8071930424661741	CMakeFiles/TaiwanSmartQuant.dir/src/technical/indicators.cpp.obj	5e0df7b00157ce9e
+23	2516	8071930424762590	CMakeFiles/TaiwanSmartQuant.dir/src/backtest/backtest_engine.cpp.obj	a9488e1a45a6c1c5
+9	3310	8071930424611102	CMakeFiles/TaiwanSmartQuant.dir/src/data/storage_engine.cpp.obj	42d5d3b52a2d9bdd
+38	3908	8071930424909627	CMakeFiles/TaiwanSmartQuant.dir/src/main.cpp.obj	bcf1d5a94b091b5b
+3908	4735	8071930463605962	TaiwanSmartQuant.exe	90c2de77ea06605
