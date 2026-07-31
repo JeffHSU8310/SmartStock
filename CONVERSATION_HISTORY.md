@@ -6,6 +6,26 @@
 
 ## 📜 對話紀錄歷程
 
+### 📌 [記錄時間: 2026-07-31] - 永豐金 Shioaji API 實盤登入與 CA 憑證驗證視窗 (v6.0.5)
+
+- **使用者需求 (User Prompt)**:
+  - 要求設計可以填入相關資料的視窗功能（包含身分證字號、API Key、Secret Key、.pfx 憑證檔案路徑、憑證密碼，以及「驗證憑證並連線」按鈕），100% 配對使用者提供之視窗截圖設計。
+
+- **系統處理與決策 (System Action & Decision)**:
+  - 於 [`gui/index.html`](file:///C:/Users/jeffn/.gemini/antigravity/worktrees/Rot/fix_rot_repository_issues/gui/index.html) 與 [`gui/style.css`](file:///C:/Users/jeffn/.gemini/antigravity/worktrees/Rot/fix_rot_repository_issues/gui/style.css) 新增 Modal 彈窗與亮橘核心按鈕，完全符合圖片佈局與主題暗灰質感。
+  - 於 [`src/sinopac_engine.py`](file:///C:/Users/jeffn/.gemini/antigravity/worktrees/Rot/fix_rot_repository_issues/src/sinopac_engine.py) 實作 `login_with_ca` 方法，綁定永豐金 `api.login()` 與 `api.activate_ca()`。
+  - 於 [`src/gui_host.py`](file:///C:/Users/jeffn/.gemini/antigravity/worktrees/Rot/fix_rot_repository_issues/src/gui_host.py) 與 [`gui/app.js`](file:///C:/Users/jeffn/.gemini/antigravity/worktrees/Rot/fix_rot_repository_issues/gui/app.js) 實作 `ApiBridge` 非同步傳輸與原生檔案選擇器 (File Dialog)。
+  - 更新 [`CHANGELOG.md`](file:///C:/Users/jeffn/.gemini/antigravity/worktrees/Rot/fix_rot_repository_issues/CHANGELOG.md) 至 `v6.0.5` (恪遵 Rule 13 `+0.0.1` 遞增)。
+  - 執行 Git Commit 並全數自動 Push 同步至 GitHub `main` 分支。
+
+- **當前專案狀態**:
+  - **軟體版本**: v6.0.5 (永豐金 API 憑證登入視窗完成)
+  - **下一步選擇**: 【智慧選股雷達】/【C++ 回測儀表板】/【消息面重訊】/【數據 CRUD & Telegram】
+  - **GitHub 狀態**: 已與 `https://github.com/JeffHSU8310/Rot.git` 遠端 `main` 完全同步。
+  - **Git 分支**: main (tracking origin/main)
+
+---
+
 ### 📌 [記錄時間: 2026-07-31] - 修正第一步：【看盤大廳與即時報價】永豐金 Shioaji 雙引擎強化 (v6.0.4)
 
 - **使用者需求 (User Prompt)**:

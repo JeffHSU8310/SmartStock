@@ -19,7 +19,7 @@
         <div class="logo-container">
             <div class="logo-icon"><i class="fa-solid fa-chart-line-up"></i></div>
             <div class="logo-text">
-                <h1>TaiwanSmartQuant <span>v5.0 Native</span></h1>
+                <h1>TaiwanSmartQuant <span>v6.0.5 Native</span></h1>
                 <p>C++ 核心計算引擎 (K線/報價/回測/選股) · Python 原生全彩桌面視窗</p>
             </div>
         </div>
@@ -56,6 +56,10 @@
             </button>
             <button class="tab-btn" data-tab="tab-crud">
                 <i class="fa-solid fa-database"></i> 數據CRUD與推播
+            </button>
+            <button class="api-login-btn" id="open-login-modal-btn">
+                <i class="fa-solid fa-key"></i> 登入永豐金 API
+                <span class="status-badge red" id="api-status-badge">未連線</span>
             </button>
         </nav>
     </header>
@@ -285,8 +289,57 @@
 
     <!-- 頁腳 Footer -->
     <footer class="app-footer">
-        <p>TaiwanSmartQuant v5.0 Native © 2026 台灣上市·上櫃·期貨智慧機器人系統 | C++ 核心架構 (K線/報價/回測/選股) · Python 原生全彩版面</p>
+        <p>TaiwanSmartQuant v6.0.5 Native © 2026 台灣上市·上櫃·期貨智慧機器人系統 | C++ 核心架構 (K線/報價/回測/選股) · Python 原生全彩版面</p>
     </footer>
+
+    <!-- 登入永豐金實盤 API (含憑證) 視窗 Modal -->
+    <div id="login-modal" class="modal-overlay">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="fa-solid fa-feather"></i> 登入永豐金實盤 API (含憑證)
+                </div>
+                <button class="modal-close" id="close-login-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="sinopac-login-form">
+                    <div class="form-field">
+                        <label for="person-id">身分證字號：</label>
+                        <input type="text" id="person-id" placeholder="例如: H122511000" value="H122511000">
+                    </div>
+
+                    <div class="form-field">
+                        <label for="api-key">API Key:</label>
+                        <input type="password" id="api-key" placeholder="請輸入 API Key">
+                    </div>
+
+                    <div class="form-field">
+                        <label for="secret-key">Secret Key:</label>
+                        <input type="password" id="secret-key" placeholder="請輸入 Secret Key">
+                    </div>
+
+                    <div class="form-field">
+                        <label for="ca-path">憑證檔案路徑 (.pfx):</label>
+                        <div class="input-with-btn">
+                            <input type="text" id="ca-path" placeholder="例如: E:\永豐API\Sinopac.pfx" value="E:\永豐API\Sinopac.pfx">
+                            <button type="button" id="browse-pfx-btn" class="browse-btn"><i class="fa-solid fa-folder-open"></i> 瀏覽...</button>
+                        </div>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="ca-passwd">憑證密碼：</label>
+                        <input type="password" id="ca-passwd" placeholder="請輸入憑證密碼">
+                    </div>
+
+                    <div id="login-status-msg" class="login-status-msg"></div>
+
+                    <div class="modal-footer">
+                        <button type="submit" class="submit-orange-btn" id="verify-connect-btn">驗證憑證並連線</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <script src="app.js"></script>
 </body>

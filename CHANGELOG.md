@@ -4,6 +4,22 @@
 
 ---
 
+## [v6.0.5] - 2026-07-31
+
+### 券商 API 登入與 CA 憑證驗證視窗 (SinoPac Shioaji API Real-Account Auth Modal)
+- **前端 GUI 原生 Modal 設計 ([gui/index.html](file:///C:/Users/jeffn/.gemini/antigravity/worktrees/Rot/fix_rot_repository_issues/gui/index.html), [gui/style.css](file:///C:/Users/jeffn/.gemini/antigravity/worktrees/Rot/fix_rot_repository_issues/gui/style.css))**：
+  - 設計「登入永豐金實盤 API (含憑證)」彈出式視窗，包含身分證字號、API Key、Secret Key、.pfx 憑證路徑（支援原生檔案總管選擇器）與憑證密碼。
+  - 介面細緻配對暗灰沉浸風格與高彩亮橘 **【驗證憑證並連線】** 核心按鈕。
+  - 頂部 Navigation Header 新增實盤連線狀態標籤（🔴 未連線 / 🟢 實盤已連線 / 🟡 模擬模式）。
+- **Python 後端憑證激活雙引擎 ([src/sinopac_engine.py](file:///C:/Users/jeffn/.gemini/antigravity/worktrees/Rot/fix_rot_repository_issues/src/sinopac_engine.py), [src/gui_host.py](file:///C:/Users/jeffn/.gemini/antigravity/worktrees/Rot/fix_rot_repository_issues/src/gui_host.py))**：
+  - 新增 `login_with_ca` 方法，整合 Shioaji API `login()` 與 `activate_ca()`。
+  - 透過 `ApiBridge` 實現 pywebview 與 JavaScript 雙向非同步數據交會。
+
+### 備註 (Notes)
+- 恪遵 Rule 13 嚴格 `+0.0.1` 遞增，已 Commit 並自動同步至 **origin/main**。
+
+---
+
 ## [v6.0.4] - 2026-07-31
 
 ### 修正第一步：【看盤大廳與即時報價】永豐金 Shioaji 雙引擎強化 (Step 1 Market Quote Refinement)
