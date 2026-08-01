@@ -1,5 +1,12 @@
+import os
+import json
 from PySide6 import QtCore, QtGui, QtWidgets
 from typing import List, Dict
+
+try:
+    from src.utils.config_manager import ConfigManager
+except ImportError:
+    from utils.config_manager import ConfigManager
 
 COMMON_SYMBOL_NAMES = {
     "2330": "台積電", "2317": "鴻海", "2454": "聯發科", "2308": "台達電",
@@ -31,16 +38,47 @@ DEFAULT_GROUPS_DATA = {
 }
 
 class WatchlistWidget(QtWidgets.QWidget):
-    """自選股多群組管理元件 (支援自訂群組名稱、新增/修改/刪除群組與快照更新)"""
-    stock_selected_signal = QtCore.Signal(str, str) # 發送 (股票代碼, 股票名稱)
+    """自選股多群組管理元件 (支援自訂群組名稱、新增/修改/刪除群組與自動持久化保存)"""
+    stock_selected_signal = QtCore.Signal(str, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.groups_data = dict(DEFAULT_GROUPS_DATA)
-        self.current_group_name = "預設自選"
+        self.config_mgr = ConfigManager()
+        self.groups_data = self._load_groups_from_config()
+        self.current_group_name = list(self.groups_data.keys())[0] if self.groups_data else "預設自選"
 
         self._init_ui()
         self._load_group_stocks(self.current_group_name)
+
+    def _load_groups_from_config(self) -> Dict[str, List]:
+        """從本地 config.json 載入群組資料，若無則傳回預設值"""
+        try:
+            cfg = ConfigManager.load_config()
+            saved_groups = cfg.get("watchlist_groups")
+            if saved_groups and isinstance(saved_groups, dict):
+                # 轉回 tuple 格式
+                formatted = {}
+                for g_name, items in saved_groups.items():
+                    formatted[g_name] = [(item[0], item[1]) for item in items]
+                if formatted:
+                    return formatted
+        except Exception as e:
+            print(f"[Watchlist] 載入設定警示: {e}")
+        
+        return dict(DEFAULT_GROUPS_DATA)
+
+    def _save_groups_to_config(self):
+        """★ 即時自動存檔：將目前所有群組與內含股票寫入 config.json 持久化 ★"""
+        try:
+            serializable = {}
+            for g_name, items in self.groups_data.items():
+                serializable[g_name] = [[c, n] for c, n in items]
+            
+            cfg = ConfigManager.load_config()
+            cfg["watchlist_groups"] = serializable
+            ConfigManager.save_config(cfg)
+        except Exception as e:
+            print(f"[Watchlist] 自動存檔 Exception: {e}")
 
     def _init_ui(self):
         layout = QtWidgets.QVBoxLayout(self)
@@ -55,6 +93,10 @@ class WatchlistWidget(QtWidgets.QWidget):
         self.combo_groups.setStyleSheet("background-color: #1E222A; color: #00E5FF; font-weight: bold; padding: 4px 8px;")
         for g_name in self.groups_data.keys():
             self.combo_groups.addItem(g_name)
+        
+        if self.current_group_name in self.groups_data:
+            self.combo_groups.setCurrentText(self.current_group_name)
+
         self.combo_groups.currentTextChanged.connect(self.on_group_changed)
         group_box.addWidget(self.combo_groups, stretch=1)
 
@@ -80,7 +122,7 @@ class WatchlistWidget(QtWidgets.QWidget):
 
         layout.addLayout(input_box)
 
-        # 3. 自選股表格 (代碼, 名稱, 成交價, 漲跌幅)
+        # 3. 自選股表格
         self.table = QtWidgets.QTableWidget(0, 4)
         self.table.setHorizontalHeaderLabels(["代碼", "名稱", "成交價", "漲跌幅"])
         self.table.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
@@ -147,7 +189,7 @@ class WatchlistWidget(QtWidgets.QWidget):
         self.btn_group_menu.setMenu(menu)
 
     def create_new_group(self):
-        """➕ 新增群組對話框"""
+        """➕ 新增群組並自動存檔"""
         text, ok = QtWidgets.QInputDialog.getText(self, "新增自選股群組", "請輸入新群組名稱:")
         if ok and text.strip():
             g_name = text.strip()
@@ -157,9 +199,10 @@ class WatchlistWidget(QtWidgets.QWidget):
             self.groups_data[g_name] = []
             self.combo_groups.addItem(g_name)
             self.combo_groups.setCurrentText(g_name)
+            self._save_groups_to_config() # 自動存檔
 
     def rename_current_group(self):
-        """✏️ 重新命名當前群組"""
+        """✏️ 重新命名當前群組並自動存檔"""
         curr = self.combo_groups.currentText()
         text, ok = QtWidgets.QInputDialog.getText(self, "修改群組名稱", f"請輸入 [{curr}] 的新名稱:", text=curr)
         if ok and text.strip() and text.strip() != curr:
@@ -171,9 +214,10 @@ class WatchlistWidget(QtWidgets.QWidget):
             idx = self.combo_groups.currentIndex()
             self.combo_groups.setItemText(idx, new_name)
             self.current_group_name = new_name
+            self._save_groups_to_config() # 自動存檔
 
     def delete_current_group(self):
-        """🗑️ 刪除當前群組"""
+        """🗑️ 刪除當前群組並自動存檔"""
         if len(self.groups_data) <= 1:
             QtWidgets.QMessageBox.warning(self, "警告", "無法刪除！系統至少需要保留一個自選股群組。")
             return
@@ -187,9 +231,10 @@ class WatchlistWidget(QtWidgets.QWidget):
             self.groups_data.pop(curr, None)
             idx = self.combo_groups.currentIndex()
             self.combo_groups.removeItem(idx)
+            self._save_groups_to_config() # 自動存檔
 
     def on_group_changed(self, group_name: str):
-        """切換群組事件」"""
+        """切換群組事件"""
         if not group_name or group_name not in self.groups_data:
             return
         self.current_group_name = group_name
@@ -223,7 +268,7 @@ class WatchlistWidget(QtWidgets.QWidget):
         self.table.setItem(row, 3, item_pct)
 
     def update_quote(self, code: str, price: float, pct_change: float, name: str = ""):
-        """全真快照動態更新自選股列表之名稱、價格與漲跌幅 (高亮顯示顏色)"""
+        """全真快照動態更新自選股列表之名稱、價格與漲跌幅"""
         for row in range(self.table.rowCount()):
             item_code = self.table.item(row, 0)
             if item_code and item_code.text() == code:
@@ -247,6 +292,7 @@ class WatchlistWidget(QtWidgets.QWidget):
                 break
 
     def add_stock(self):
+        """新增股票並自動存檔"""
         code = self.input_code.text().strip().upper()
         if not code:
             return
@@ -260,9 +306,9 @@ class WatchlistWidget(QtWidgets.QWidget):
         name = COMMON_SYMBOL_NAMES.get(code, f"股票 {code}")
         self._insert_row(code, name, "--", "--")
         
-        # 更新群組記憶
         if self.current_group_name in self.groups_data:
             self.groups_data[self.current_group_name].append((code, name))
+            self._save_groups_to_config() # 自動存檔
 
         self.input_code.clear()
         
@@ -270,6 +316,7 @@ class WatchlistWidget(QtWidgets.QWidget):
         self.table.selectRow(new_row)
 
     def delete_stock(self):
+        """刪除股票並自動存檔"""
         row = self.table.currentRow()
         if row >= 0:
             item_code = self.table.item(row, 0)
@@ -279,19 +326,35 @@ class WatchlistWidget(QtWidgets.QWidget):
                     self.groups_data[self.current_group_name] = [
                         (c, n) for c, n in self.groups_data[self.current_group_name] if c != code_to_del
                     ]
+                    self._save_groups_to_config() # 自動存檔
             self.table.removeRow(row)
 
     def move_up(self):
+        """上移股票並自動存檔"""
         row = self.table.currentRow()
         if row > 0:
             self._swap_rows(row, row - 1)
             self.table.selectRow(row - 1)
+            self._sync_group_order_and_save()
 
     def move_down(self):
+        """下移股票並自動存檔"""
         row = self.table.currentRow()
         if row < self.table.rowCount() - 1:
             self._swap_rows(row, row + 1)
             self.table.selectRow(row + 1)
+            self._sync_group_order_and_save()
+
+    def _sync_group_order_and_save(self):
+        """同步 QTableWidget 順序至 groups_data 並自動存檔"""
+        new_list = []
+        for r in range(self.table.rowCount()):
+            c_item = self.table.item(r, 0)
+            n_item = self.table.item(r, 1)
+            if c_item and n_item:
+                new_list.append((c_item.text(), n_item.text()))
+        self.groups_data[self.current_group_name] = new_list
+        self._save_groups_to_config() # 自動存檔
 
     def _swap_rows(self, row1: int, row2: int):
         for col in range(4):
