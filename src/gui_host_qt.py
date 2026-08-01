@@ -32,10 +32,10 @@ except ImportError:
     from utils.config_manager import ConfigManager
 
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.33)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.34)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.33 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.34 (Pure Native Qt6)")
         self.resize(1520, 940)
 
         self.current_code = "2330"

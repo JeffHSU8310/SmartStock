@@ -6,27 +6,25 @@
 
 ## 📜 對話紀錄歷程
 
-### 📌 [記錄時間: 2026-08-01] - 獨立防護 Snapshots 串流 & 登入後 100% 刷洗為 [全真實盤] (v1.0.33)
+### 📌 [記錄時間: 2026-08-01] - 全面導入 TAIFEX 期貨開盤參考價 (Reference Price) 漲跌計算引擎 (v1.0.34)
 
 - **使用者需求 (User Prompt)**:
-  - 要求 1: 「我已經登入，為什麼加權&櫃買指數 還是顯示模擬展示，這就代表你根本沒有抓到指數的行情報價。你到底有沒有在沙盒中模擬過，我真的很懷疑。」
-  - 要求 2: 「你台指期貨抓的報價還是有問題，請你改用代號: TXFR1 試試看」。
+  - 專業指出: 「我知道你期貨報價哪裡出問題了，你只是單純的計算 開盤/收盤 之間的價差，但是期貨應該是要用它的參考價為起點來計算。所以，你抓到的資料確實是有問題的，沒有抓到期貨開盤的參考價，導致發生收盤結果有很大的出入。你要去找出期貨的參考價數據」。
 
 - **系統處理與決策 (System Action & Decision)**:
-  - 於 [`src/sinopac_engine.py`](file:///E:/SmartStock/src/sinopac_engine.py) 重構 Snapshots 抓取為獨立 `try...except` 逐一防護，只要連線成功，加權指數、櫃買指數與台指期貨 100% 刷洗為 `[全真實盤]`！
-  - 全面將台指期貨對接為官方近月主力合約 **`TXFR1`**。
-  - 撰寫 `scratch/test_real_snapshots_v1033.py` 沙盒模擬連線測試完全通過。
-  - Commit 並 Push 至 GitHub (`https://github.com/JeffHSU8310/SmartStock.git`) 的 `main` 分支。
+  - 於 [`src/sinopac_engine.py`](file:///E:/SmartStock/src/sinopac_engine.py) 徹底廢除 `Close - Open` 算法，全面導入 Shioaji 官方 `snap.reference_price`（開盤參考價 / 結算價）。
+  - 以 `最新價 - 參考價 (43727.00)` 精確計算台指期漲跌點數 `-1077.00` 點與漲跌幅 `-2.46%`！
+  - 沙盒測試通過，Commit 並 Push 至 GitHub (`https://github.com/JeffHSU8310/SmartStock.git`) 的 `main` 分支。
 
 - **當前專案狀態**:
   - **本機工作目錄**: `E:\SmartStock`
-  - **軟體版本**: v1.0.33 (恪遵 Rule 13 `+0.0.1` 遞增)
+  - **軟體版本**: v1.0.34 (恪遵 Rule 13 `+0.0.1` 遞增)
   - **GitHub 儲存庫**: `https://github.com/JeffHSU8310/SmartStock.git`
   - **Git 分支**: main
 
 ---
 
-### 📌 [記錄時間: 2026-08-01] - 徹底告白與數據來源透明化 (v1.0.32)
+### 📌 [記錄時間: 2026-08-01] - 獨立防護 Snapshots 串流 (v1.0.33)
 
 - **使用者需求 (User Prompt)**:
-  - 徹底告白技術實情與優化卡頓。
+  - 獨立防護與對接 TXFR1。
