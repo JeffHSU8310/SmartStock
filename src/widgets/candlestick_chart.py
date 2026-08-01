@@ -36,7 +36,6 @@ class CandlestickItem(pg.GraphicsObject):
         pen_green = pg.mkPen('#00E676', width=1.5)
         brush_green = pg.mkBrush('#00E676')
 
-        # w=0.25 (實體總寬 0.5，兩棒中心距 1.0 ➔ 間隔恰好為 0.5，剛好等於一根 K 棒的寬度!)
         w = 0.25
         for t, open_p, close_p, low_p, high_p in self.data:
             if close_p >= open_p:
@@ -66,7 +65,7 @@ class CandlestickItem(pg.GraphicsObject):
         return QtCore.QRectF(self.picture.boundingRect())
 
 class NativeCandlestickChart(QtWidgets.QWidget):
-    """Pure Native Qt6 pyqtgraph 旗艦級 3 層 K 線與 MACD 圖表 (支援游標精準吸附與 5 大時間快選)"""
+    """Pure Native Qt6 pyqtgraph 旗艦級 3 層 K 線與 MACD 圖表 (支援游標精準吸附, 垂直 Splitter 自由拖拉高度與 5 大時間快選)"""
     hover_kbar_signal = QtCore.Signal(dict)
 
     def __init__(self, parent=None):
@@ -85,35 +84,44 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
 
         pg.setConfigOptions(antialias=True)
-        self.win = pg.GraphicsLayoutWidget()
-        self.win.setBackground('#121418')
-        self.layout.addWidget(self.win)
+        
+        # 導入 QSplitter(QtCore.Qt.Vertical) 實現主圖 vs 成交量 vs MACD 上下拖拉高度
+        self.chart_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        self.layout.addWidget(self.chart_splitter)
 
         self._init_plots()
 
     def _init_plots(self):
         # 1. 主 K 線畫布 (Plot 1: Price & MAs)
-        self.p1 = self.win.addPlot(row=0, col=0)
+        self.win1 = pg.GraphicsLayoutWidget()
+        self.win1.setBackground('#121418')
+        self.p1 = self.win1.addPlot(row=0, col=0)
         self.p1.showGrid(x=True, y=True, alpha=0.15)
         self.p1.setLabel('left', 'Price', color='#A0AAB8')
         self.p1.getAxis('bottom').setPen('#2A2E39')
         self.p1.getAxis('left').setPen('#2A2E39')
+        self.chart_splitter.addWidget(self.win1)
 
         # 2. 副圖一：成交量畫布 (Plot 2: Volume)
-        self.win.nextRow()
-        self.p2 = self.win.addPlot(row=1, col=0)
+        self.win2 = pg.GraphicsLayoutWidget()
+        self.win2.setBackground('#121418')
+        self.p2 = self.win2.addPlot(row=0, col=0)
         self.p2.showGrid(x=True, y=True, alpha=0.15)
         self.p2.setLabel('left', 'Volume', color='#A0AAB8')
-        self.p2.setMaximumHeight(110)
         self.p2.setXLink(self.p1)
+        self.chart_splitter.addWidget(self.win2)
 
         # 3. 副圖二：MACD 畫布 (Plot 3: MACD Indicator - DIF, DEA, MACD Bar)
-        self.win.nextRow()
-        self.p3 = self.win.addPlot(row=2, col=0)
+        self.win3 = pg.GraphicsLayoutWidget()
+        self.win3.setBackground('#121418')
+        self.p3 = self.win3.addPlot(row=0, col=0)
         self.p3.showGrid(x=True, y=True, alpha=0.15)
         self.p3.setLabel('left', 'MACD', color='#A0AAB8')
-        self.p3.setMaximumHeight(110)
         self.p3.setXLink(self.p1)
+        self.chart_splitter.addWidget(self.win3)
+
+        # 設定初始拖拉比例 (主圖大、兩個副圖小)
+        self.chart_splitter.setSizes([480, 120, 120])
 
         # 十字線 (主圖, 副圖一, 副圖二連動)
         self.vLine1 = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('#00E5FF', width=1, style=QtCore.Qt.DashLine))
@@ -128,7 +136,7 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.p3.addItem(self.vLine3, ignoreBounds=True)
 
         # 綁定游標懸停事件 (實現精準吸附 K 棒)
-        self.win.scene().sigMouseMoved.connect(self.on_mouse_moved)
+        self.win1.scene().sigMouseMoved.connect(self.on_mouse_moved)
 
     def set_data(self, kbars: List[Dict]):
         """切換商品時 100% 徹底清空重置數據、DateAxisItem 與 3 層圖表」"""
@@ -142,7 +150,6 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.dea_vals = []
         self.macd_bars = []
 
-        # 1. 徹底清空 3 大圖表畫布 (徹底消滅對角斜線殘影與舊成交量)
         self.p1.clear()
         self.p2.clear()
         self.p3.clear()
@@ -153,7 +160,6 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.kbars_data = kbars
         self.dates = [kb['datetime'] for kb in kbars]
 
-        # 重建時間軸 DateAxisItem
         axis_p1 = DateAxisItem(self.dates, orientation='bottom')
         axis_p2 = DateAxisItem(self.dates, orientation='bottom')
         axis_p3 = DateAxisItem(self.dates, orientation='bottom')
@@ -162,7 +168,6 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.p2.setAxisItems({'bottom': axis_p2})
         self.p3.setAxisItems({'bottom': axis_p3})
 
-        # 重新加入十字線
         self.p1.addItem(self.vLine1, ignoreBounds=True)
         self.p1.addItem(self.hLine1, ignoreBounds=True)
         self.p2.addItem(self.vLine2, ignoreBounds=True)
@@ -181,7 +186,7 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         item = CandlestickItem(chart_data)
         self.p1.addItem(item)
 
-        # 2. 計算 MA5, MA20, MA60, MA120 (以 np.nan 防禦 pyqtgraph)
+        # 2. 計算 MA5, MA20, MA60, MA120
         closes_arr = np.array(closes, dtype=float)
         if len(closes_arr) >= 5:
             ma5 = np.convolve(closes_arr, np.ones(5)/5, mode='valid')
@@ -203,7 +208,7 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             self.ma120_vals = [np.nan]*119 + list(ma120)
             self.p1.plot(self.ma120_vals, pen=pg.mkPen('#E040FB', width=1.5), name='MA120')
 
-        # 3. ★ 畫副圖一成交量柱狀圖 (固定 y0=0 起算，徹底解決塞滿滿的混亂問題!) ★
+        # 3. 畫副圖一成交量柱狀圖 (固定 y0=0)
         v_colors = ['#FF3B69' if c >= o else '#00E676' for o, c in zip([k['open'] for k in kbars], closes)]
         vol_bars = pg.BarGraphItem(x=list(range(len(kbars))), height=volumes, y0=0, width=0.5, brushes=v_colors)
         self.p2.addItem(vol_bars)
@@ -221,11 +226,9 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             self.dea_vals = list(dea)
             self.macd_bars = list(macd_bar)
 
-            # 畫 DIF 快線 (天藍) 與 DEA 慢線 (橙黃)
             self.p3.plot(self.dif_vals, pen=pg.mkPen('#00E5FF', width=1.5), name='DIF')
             self.p3.plot(self.dea_vals, pen=pg.mkPen('#FF9800', width=1.5), name='DEA')
 
-            # 畫 MACD 柱狀圖 (正值紅柱、負值綠柱，固定 y0=0)
             m_colors = ['#FF3B69' if v >= 0 else '#00E676' for v in macd_bar]
             m_bars = pg.BarGraphItem(x=list(range(len(kbars))), height=macd_bar, y0=0, width=0.5, brushes=m_colors)
             self.p3.addItem(m_bars)
@@ -234,7 +237,7 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.set_view_range_months(6)
 
     def set_view_range_months(self, months: int):
-        """★ 修正時間快選按鈕：縮放 X 軸並針對可視區域自適應 Y 軸 (固定 Volume 自 0 起算!) ★"""
+        """修正時間快選按鈕：縮放 X 軸並針對可視區域自適應 Y 軸"""
         if not self.kbars_data:
             return
         
@@ -244,10 +247,8 @@ class NativeCandlestickChart(QtWidgets.QWidget):
 
         start_idx = max(0, total_cnt - bars_count)
         
-        # 1. 100% 精準設定 X 軸縮放視角
         self.p1.setXRange(start_idx, total_cnt, padding=0.01)
 
-        # 2. 主圖：自動針對目前畫面可視之 K 棒最高最低價縮放 Y 軸
         visible_kbars = self.kbars_data[start_idx:total_cnt]
         if visible_kbars:
             lows = [k['low'] for k in visible_kbars]
@@ -256,7 +257,6 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             padding_y = (max_y - min_y) * 0.05 if max_y != min_y else 10.0
             self.p1.setYRange(min_y - padding_y, max_y + padding_y, padding=0)
 
-            # 3. ★ 成交量副圖：固定 Y 軸從 0 開始到當前視角最大成交量的 1.1 倍 (完美乾淨!) ★
             vols = [k['volume'] for k in visible_kbars]
             max_v = max(vols) if vols else 1000
             self.p2.setYRange(0, max_v * 1.1, padding=0)
@@ -267,11 +267,9 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             return
 
         mouse_point = self.p1.vb.mapSceneToView(pos)
-        # 精準四捨五入吸附 K 棒正中央
         idx = int(round(mouse_point.x()))
 
         if 0 <= idx < len(self.kbars_data):
-            # 十字線完美精準對齊正中央
             self.vLine1.setPos(idx)
             self.vLine2.setPos(idx)
             self.vLine3.setPos(idx)

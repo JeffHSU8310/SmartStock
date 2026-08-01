@@ -32,10 +32,10 @@ except ImportError:
     from utils.config_manager import ConfigManager
 
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.24)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.25)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.24 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.25 (Pure Native Qt6)")
         self.resize(1520, 940)
 
         self.current_code = "2330"
@@ -187,7 +187,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         # 頂部 Header Banner
         header = QtWidgets.QHBoxLayout()
-        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.23 (Pure Native Qt6)")
+        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.25 (Pure Native Qt6)")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #00E5FF;")
         header.addWidget(title_label)
 
@@ -209,12 +209,13 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self._build_backtest_tab()
 
     def _build_market_overview_tab(self):
-        """【看盤大廳 (Market Overview)】五大原生版面結構"""
+        """【看盤大廳 (Market Overview)】五大原生版面結構 (水平 Splitter + 垂直 Splitter 彈性拖拉)"""
         tab = QtWidgets.QWidget()
         tab_layout = QtWidgets.QHBoxLayout(tab)
         tab_layout.setContentsMargins(6, 6, 6, 6)
 
-        splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        # 全局水平 Splitter (左側資訊欄 vs 右側工作區)
+        splitter_h = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
 
         # 左側資訊欄 (自選股 + 五檔 + 下單欄)
         left_widget = QtWidgets.QWidget()
@@ -222,7 +223,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(10)
 
-        box_watchlist = QtWidgets.QGroupBox("📌 1. 自選股清單 (管理與切換)")
+        box_watchlist = QtWidgets.QGroupBox("📌 1. 自選股清單 (多群組管理與切換)")
         l_wl = QtWidgets.QVBoxLayout(box_watchlist)
         self.watchlist_widget = WatchlistWidget()
         self.watchlist_widget.stock_selected_signal.connect(self.on_stock_changed)
@@ -242,13 +243,16 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         l_ot.addWidget(self.order_toolbar_widget)
         left_layout.addWidget(box_order, stretch=3)
 
-        splitter.addWidget(left_widget)
+        splitter_h.addWidget(left_widget)
 
-        # 右側主工作區 (K線主圖 + 副圖 + 訊息欄)
-        right_widget = QtWidgets.QWidget()
-        right_layout = QtWidgets.QVBoxLayout(right_widget)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(8)
+        # ★ 右側區域導入 QSplitter(QtCore.Qt.Vertical) 實現 K線圖區域 vs 系統廣播訊息欄 上下拖拉高度 ★
+        right_v_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+
+        # 右上半：K 線主圖與按鈕欄容器
+        kline_container = QtWidgets.QWidget()
+        kline_layout = QtWidgets.QVBoxLayout(kline_container)
+        kline_layout.setContentsMargins(0, 0, 0, 0)
+        kline_layout.setSpacing(6)
 
         # K 線頂部列：商品標頭 + 5大時間快選按鈕列 + 8 大全週期按鈕列
         kline_header = QtWidgets.QHBoxLayout()
@@ -258,7 +262,6 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         kline_header.addStretch()
 
-        # 1. 5 大時間快選按鈕列 ([6個月] [1年] [2年] [5年] [10年]) (高亮狀態切換修復)
         range_periods = [
             ("6個月", 6), ("1年", 12), ("2年", 24), ("5年", 60), ("10年", 120)
         ]
@@ -270,7 +273,6 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         kline_header.addWidget(QtWidgets.QLabel("|"))
 
-        # 2. 8 大全週期按鈕列 ([1分] [5分] [15分] [30分] [60分] [日] [週] [月])
         periods = [
             ("1分", "1m"), ("5分", "5m"), ("15分", "15m"), ("30分", "30m"),
             ("60分", "60m"), ("日", "Day"), ("週", "Week"), ("月", "Month")
@@ -282,25 +284,30 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
             self.period_buttons[text] = btn
             kline_header.addWidget(btn)
 
-        right_layout.addLayout(kline_header)
+        kline_layout.addLayout(kline_header)
 
-        # 游標懸停 K 棒動態高亮資訊欄 (完全對齊用戶截圖專業樣式)
+        # 游標懸停 K 棒動態高亮資訊欄
         self.lbl_hover_info = QtWidgets.QLabel("💡 尚未連線 API：請點擊右上角「登入永豐金 API」開始載入全真行情與 K 線圖")
         self.lbl_hover_info.setStyleSheet("background-color: #16191E; color: #FFD700; padding: 6px 10px; border-radius: 4px; font-weight: bold; font-size: 13px;")
-        right_layout.addWidget(self.lbl_hover_info)
+        kline_layout.addWidget(self.lbl_hover_info)
 
-        # 版面2: 3層圖表區 (主圖, 副圖一Volume, 副圖二MACD)
+        # 3 層 K 線圖表 (內含垂直 QSplitter 允許主圖 vs 成交量 vs MACD 拖拉)
         self.chart_widget = NativeCandlestickChart()
         self.chart_widget.hover_kbar_signal.connect(self.on_hover_kbar)
-        right_layout.addWidget(self.chart_widget, stretch=7)
+        kline_layout.addWidget(self.chart_widget)
 
-        # 版面5: 訊息欄 (位於副圖正下方)
+        right_v_splitter.addWidget(kline_container)
+
+        # 右下半：系統廣播訊息欄 (高度預設減半，可滑鼠上下拖拉調整)
         self.console_widget = MessageConsoleWidget()
-        right_layout.addWidget(self.console_widget, stretch=3)
+        right_v_splitter.addWidget(self.console_widget)
 
-        splitter.addWidget(right_widget)
-        splitter.setSizes([380, 1100])
-        tab_layout.addWidget(splitter)
+        # 設定右側垂直拖拉比例：K線區域占 850，廣播訊息欄占 120 (預設精簡減半)
+        right_v_splitter.setSizes([780, 140])
+
+        splitter_h.addWidget(right_v_splitter)
+        splitter_h.setSizes([380, 1100])
+        tab_layout.addWidget(splitter_h)
 
         self.tabs.addTab(tab, "📊 看盤大廳 (Market Overview)")
 
@@ -618,12 +625,12 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         QtWidgets.QMessageBox.information(self, "C++ 選股完成", f"C++ 核心演算法完成掃描，發現 {len(results)} 檔符合強勢多頭標的！")
 
     def run_cpp_backtest(self):
-        """觸發 C++ 高速回測引擎"""
+        """觸發 C++ 高速回測引擎 (支援 10 年全歷史 2500 筆資料長線回測)"""
         fast_ma = int(self.input_fast_ma.text())
         slow_ma = int(self.input_slow_ma.text())
         capital = float(self.input_capital.text())
 
-        kbars = self.engine.get_kbars(code="2330", limit=200)
+        kbars = self.engine.get_kbars(code=self.current_code, limit=2500)
 
         if self.dll and hasattr(self.dll, 'run_backtest_ma'):
             c_kbars = (CXXKBar * len(kbars))()
