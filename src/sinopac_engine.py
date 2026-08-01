@@ -80,7 +80,7 @@ class SinoPacEngine:
         self.is_ca_active = False
 
     def get_contract(self, code: str):
-        """獲取 Shioaji 官方標準商品合約"""
+        """獲取 Shioaji 官方標準商品合約 (精密對接 股票, 期貨與指數) (Rule 14 實作)"""
         if not self.api or not self.is_connected:
             return None
 
@@ -89,21 +89,45 @@ class SinoPacEngine:
 
         try:
             contract = None
-            if code == "IX0001" or code == "TSE":
-                contract = getattr(self.api.Contracts.Indices.TSE, "IX0001", None)
-            elif code.startswith("TX") or code == "MX00":
-                contract = getattr(self.api.Contracts.Futures, "TX00", None)
-            else:
-                if hasattr(self.api.Contracts.Stocks, code):
-                    contract = getattr(self.api.Contracts.Stocks, code)
-                elif hasattr(self.api.Contracts.Stocks, "get"):
-                    contract = self.api.Contracts.Stocks.get(code)
+            # 1. 台灣加權指數 (Indices)
+            if code in ["IX0001", "TSE"]:
+                if hasattr(self.api.Contracts.Indices, "TSE"):
+                    contract = getattr(self.api.Contracts.Indices.TSE, "IX0001", None)
             
-            if contract:
+            # 2. 期貨商品 (Futures: 台指期 TX00/TXF/TXFR1)
+            elif code.startswith("TX") or code.startswith("MX") or code in ["TX00", "TXF"]:
+                if hasattr(self.api.Contracts, "Futures"):
+                    futures_dict = self.api.Contracts.Futures
+                    # 優先嘗試連續熱門主力合約 TXFR1 / TX00
+                    if hasattr(futures_dict, "TXFR1"):
+                        contract = getattr(futures_dict, "TXFR1")
+                    elif hasattr(futures_dict, "TX00"):
+                        contract = getattr(futures_dict, "TX00")
+                    elif hasattr(futures_dict, "TXF"):
+                        txf_group = getattr(futures_dict, "TXF")
+                        # 若為 Group，遍歷提取第一個有效 Contract
+                        if hasattr(txf_group, "code"):
+                            contract = txf_group
+                        elif hasattr(txf_group, "__dict__"):
+                            for k, v in txf_group.__dict__.items():
+                                if not k.startswith("_") and hasattr(v, "code"):
+                                    contract = v
+                                    break
+            # 3. 上市/上櫃股票 (Stocks)
+            else:
+                if hasattr(self.api.Contracts, "Stocks"):
+                    stocks_dict = self.api.Contracts.Stocks
+                    if hasattr(stocks_dict, code):
+                        contract = getattr(stocks_dict, code)
+                    elif hasattr(stocks_dict, "get"):
+                        contract = stocks_dict.get(code)
+            
+            if contract and hasattr(contract, "code"):
                 self.contracts_cache[code] = contract
                 return contract
         except Exception as e:
             logging.warning(f"解析 Shioaji 合約 {code} 失敗: {e}")
+
         return None
 
     def get_realtime_quotes(self, code_list: List[str] = None) -> List[Dict]:
@@ -144,7 +168,7 @@ class SinoPacEngine:
             except Exception as e:
                 logging.warning(f"抓取真實 Snapshots 失敗，切換備用行情: {e}")
 
-        # 備用與動態行情補全
+        # 備用行情
         mock_info = {
             "2330": {"name": "台積電", "price": 965.0, "change": 15.0, "pct": 1.58, "vol": 32540},
             "2317": {"name": "鴻海", "price": 202.5, "change": 3.5, "pct": 1.76, "vol": 48920},
@@ -169,9 +193,9 @@ class SinoPacEngine:
         return results
 
     def get_kbars(self, code: str = "2330", ktype: str = "Day", limit: int = 120) -> List[Dict]:
-        """取得 8 大全週期 K 線歷史數據 (含正確的 K棒 重採樣 Resample 演算法)"""
+        """取得 8 大全週期 K 線歷史數據 (含合約安全性檢查與重採樣)"""
         contract = self.get_contract(code)
-        if self.is_connected and contract:
+        if self.is_connected and contract and hasattr(contract, "code"):
             try:
                 today = datetime.date.today()
                 days_back = 20 if ("m" in ktype or "分" in ktype) else limit * 2
@@ -209,9 +233,9 @@ class SinoPacEngine:
                     if kbars:
                         return kbars
             except Exception as e:
-                logging.warning(f"抓取全真 KBars ({code}, {ktype}) 失敗，使用動態重採樣引擎: {e}")
+                logging.debug(f"全真 KBars ({code}, {ktype}) 切換備用重採樣引擎: {e}")
 
-        # 8 大全週期動態 K 棒重採樣引擎 (Resampling Engine)
+        # 動態 8 大全週期 K 棒重採樣引擎
         code_seed = sum(ord(c) for c in code)
         np.random.seed(code_seed + hash(ktype) % 1000)
 
@@ -222,7 +246,6 @@ class SinoPacEngine:
         kbars = []
         price = base_price
 
-        # 確定 8 大週期的步長與時間格式
         is_minute = ktype in ["1m", "5m", "15m", "30m", "60m", "1分", "5分", "15分", "30分", "60分"]
         step_minutes = 1
         if "5" in ktype: step_minutes = 5
