@@ -4,6 +4,18 @@
 
 ---
 
+## [v1.0.2] - 2026-08-01
+
+### 🔍 全盤本機開發環境診斷與驗證 (Full Environment & Package Audit)
+- **語言與編譯器環境核驗**：
+  - **Python (v3.13.9)**：`shioaji` (v1.7.0), `PySide6` (v6.9.2), `pyqtgraph` (v0.14.0), `numpy` (v2.3.5), `pandas` (v2.3.3), `matplotlib` (v3.10.6), `PyInstaller` (v6.21.0) 核心套件全數盤點通過。
+  - **C / C++**：`GCC / G++` (v15.2.0 MinGW-w64) 與 `CMake` (v4.4.1) 驗證具備 C++17/C++20 動態庫編譯能力。
+  - **C# / .NET**：`.NET SDK` (v10.0.400) 驗證具備完整的 C# 模組支援。
+- **版本與紀錄**：
+  - 恪遵 Rule 13 嚴格 `+0.0.1` 遞增，版本升級至 **v1.0.2**。
+
+---
+
 ## [v1.0.1] - 2026-08-01
 
 ### 📂 本機專案路徑遷移與環境對齊 (Local Directory Migration to E:\SmartStock)
