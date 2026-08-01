@@ -31,43 +31,11 @@ except ImportError:
     from widgets.auth_dialog import AuthDialog
     from utils.config_manager import ConfigManager
 
-# C++ ctypes Mapping
-class CXXKBar(ctypes.Structure):
-    _fields_ = [
-        ("datetime", ctypes.c_char * 32),
-        ("open", ctypes.c_double),
-        ("high", ctypes.c_double),
-        ("low", ctypes.c_double),
-        ("close", ctypes.c_double),
-        ("volume", ctypes.c_int64)
-    ]
-
-class CXXSelectionResult(ctypes.Structure):
-    _fields_ = [
-        ("code", ctypes.c_char * 16),
-        ("name", ctypes.c_char * 32),
-        ("close", ctypes.c_double),
-        ("pct_change", ctypes.c_double),
-        ("score", ctypes.c_double),
-        ("signal_type", ctypes.c_char * 64)
-    ]
-
-class CXXBacktestResult(ctypes.Structure):
-    _fields_ = [
-        ("total_return_pct", ctypes.c_double),
-        ("win_rate", ctypes.c_double),
-        ("max_drawdown_pct", ctypes.c_double),
-        ("sharpe_ratio", ctypes.c_double),
-        ("total_trades", ctypes.c_int),
-        ("winning_trades", ctypes.c_int),
-        ("losing_trades", ctypes.c_int)
-    ]
-
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.15)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.17)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.15 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.17 (Pure Native Qt6)")
         self.resize(1520, 940)
 
         self.current_code = "2330"
@@ -217,7 +185,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         # 頂部 Header Banner
         header = QtWidgets.QHBoxLayout()
-        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.15 (Pure Native Qt6)")
+        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.17 (Pure Native Qt6)")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #00E5FF;")
         header.addWidget(title_label)
 
@@ -451,33 +419,47 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.quote_timer.start(3000)
 
     def refresh_realtime_quotes(self):
-        """全真 Snapshots 快照刷新自選股表格與五檔現價"""
+        """全真 Snapshots 快照刷新自選股表格與五檔現價 (包含真實中文名稱連動)"""
         codes = [self.watchlist_widget.table.item(r, 0).text() for r in range(self.watchlist_widget.table.rowCount()) if self.watchlist_widget.table.item(r, 0)]
         if not codes:
             codes = ["2330", "2317", "2454", "2308", "2382", "0050", "0056", "TX00"]
 
         quotes = self.engine.get_realtime_quotes(codes)
 
-        # 1. 刷新自選股表格價格
+        # 1. 刷新自選股表格價格與名稱
         for q in quotes:
-            self.watchlist_widget.update_quote(q['code'], q['price'], q['pct_change'])
+            self.watchlist_widget.update_quote(q['code'], q['price'], q['pct_change'], q.get('name', ''))
 
         # 2. 刷新五檔委買賣價
         current_quote = next((q for q in quotes if q['code'] == self.current_code), None)
         if current_quote:
             self.five_bids_widget.set_mock_bids(self.current_code, current_quote['price'])
             self.order_toolbar_widget.set_symbol(self.current_code, current_quote['price'])
+            
+            # 若取得真實名稱且與當前不同，自動連動更正標題！
+            real_name = current_quote.get('name', '')
+            if real_name and real_name != self.current_name and not self.current_name.startswith("股票 "):
+                self.current_name = real_name
+                self.lbl_stock_title.setText(f"{self.current_code} {self.current_name} — [{self.current_ktype} K 線圖]")
 
     def load_initial_data(self):
         self.update_period_button_styles()
         self.on_stock_changed("2330", "台積電")
 
-    def on_stock_changed(self, code: str, name: str):
-        """自選股點擊連動：徹底重置切換商品 K 線圖資訊"""
+    def on_stock_changed(self, code: str, name: str = ""):
+        """自選股點擊連動：徹底重置切換商品 K 線圖資訊 (自動對接官方中文名稱)"""
         self.current_code = code
-        self.current_name = name
+        
+        # 解析商品的真實中文名稱 (例: 00878 ➔ 國泰永續高股息)
+        real_name = self.engine.get_symbol_name(code)
+        if real_name and not real_name.startswith("股票 "):
+            self.current_name = real_name
+        elif name and not name.startswith("股票 "):
+            self.current_name = name
+        else:
+            self.current_name = real_name
 
-        self.lbl_stock_title.setText(f"{code} {name} — [{self.current_ktype} K 線圖]")
+        self.lbl_stock_title.setText(f"{code} {self.current_name} — [{self.current_ktype} K 線圖]")
         
         # 1. 抓取該商品最新重採樣 KBars 並 100% 刷新重置主圖 K 線與副圖
         kbars = self.engine.get_kbars(code=code, ktype=self.current_ktype_code)
@@ -491,7 +473,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.order_toolbar_widget.set_symbol(code, latest_price)
 
         # 4. 印出日誌
-        self.console_widget.log_info(f"切換看盤商品: {code} {name} (當前價: {latest_price:.2f})")
+        self.console_widget.log_info(f"切換看盤商品: {code} {self.current_name} (當前價: {latest_price:.2f})")
 
     def switch_ktype(self, ktype_code: str, ktype_name: str = ""):
         """8 大全週期切換邏輯 (1分, 5分, 15分, 30分, 60分, 日, 週, 月)"""

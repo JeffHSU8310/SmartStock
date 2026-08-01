@@ -1,6 +1,14 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 from typing import List, Dict
 
+COMMON_SYMBOL_NAMES = {
+    "2330": "台積電", "2317": "鴻海", "2454": "聯發科", "2308": "台達電",
+    "2382": "廣達", "0050": "元大台灣50", "0056": "元大高股息",
+    "00878": "國泰永續高股息", "00919": "群益台灣精選高息", "00929": "復華台灣科技優息",
+    "00940": "元大台灣價值高息", "2881": "富邦金", "2882": "國泰金",
+    "TX00": "台指期主力", "MX00": "小台期主力", "TM00": "微台期主力"
+}
+
 class WatchlistWidget(QtWidgets.QWidget):
     """自選股管理元件 (支援動態全真快照更新 update_quote 與排序增刪)"""
     stock_selected_signal = QtCore.Signal(str, str) # 發送 (股票代碼, 股票名稱)
@@ -18,7 +26,7 @@ class WatchlistWidget(QtWidgets.QWidget):
         # 頂部控制欄 (輸入代碼 + 新增按鈕)
         input_box = QtWidgets.QHBoxLayout()
         self.input_code = QtWidgets.QLineEdit()
-        self.input_code.setPlaceholderText("輸入股票代碼 (例: 0056)...")
+        self.input_code.setPlaceholderText("輸入股票代碼 (例: 00878)...")
         self.input_code.returnPressed.connect(self.add_stock)
         input_box.addWidget(self.input_code)
 
@@ -95,11 +103,19 @@ class WatchlistWidget(QtWidgets.QWidget):
         item_pct.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.table.setItem(row, 3, item_pct)
 
-    def update_quote(self, code: str, price: float, pct_change: float):
-        """全真快照動態更新自選股列表之價格與漲跌幅 (高亮顯示顏色) (徹底消除 AttributeError)"""
+    def update_quote(self, code: str, price: float, pct_change: float, name: str = ""):
+        """全真快照動態更新自選股列表之名稱、價格與漲跌幅 (高亮顯示顏色)"""
         for row in range(self.table.rowCount()):
             item_code = self.table.item(row, 0)
             if item_code and item_code.text() == code:
+                # 0. 更新商品中文名稱 (若傳回真實名稱且當前名稱仍為舊預設)
+                if name:
+                    curr_name_item = self.table.item(row, 1)
+                    if not curr_name_item or curr_name_item.text().startswith("股票 ") or curr_name_item.text() != name:
+                        item_name = QtWidgets.QTableWidgetItem(name)
+                        item_name.setTextAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+                        self.table.setItem(row, 1, item_name)
+
                 # 1. 更新成交價
                 item_price = QtWidgets.QTableWidgetItem(f"{price:.2f}")
                 item_price.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
@@ -126,14 +142,14 @@ class WatchlistWidget(QtWidgets.QWidget):
                 self.input_code.clear()
                 return
 
-        name_map = {"2330": "台積電", "2317": "鴻海", "2454": "聯發科", "0050": "元大台灣50", "0056": "元大高股息", "TX00": "台指期主力"}
-        name = name_map.get(code, f"股票 {code}")
+        name = COMMON_SYMBOL_NAMES.get(code, f"股票 {code}")
 
         self._insert_row(code, name, "--", "--")
         self.input_code.clear()
         
-        # 自動選中新新增的行
-        self.table.selectRow(self.table.rowCount() - 1)
+        # 自動選中新新增的行並觸發連動切換
+        new_row = self.table.rowCount() - 1
+        self.table.selectRow(new_row)
 
     def delete_stock(self):
         row = self.table.currentRow()
@@ -152,12 +168,12 @@ class WatchlistWidget(QtWidgets.QWidget):
             self._swap_rows(row, row + 1)
             self.table.selectRow(row + 1)
 
-    def _swap_rows(self, r1: int, r2: int):
-        for c in range(4):
-            i1 = self.table.takeItem(r1, c)
-            i2 = self.table.takeItem(r2, c)
-            self.table.setItem(r1, c, i2)
-            self.table.setItem(r2, c, i1)
+    def _swap_rows(self, row1: int, row2: int):
+        for col in range(4):
+            item1 = self.table.takeItem(row1, col)
+            item2 = self.table.takeItem(row2, col)
+            self.table.setItem(row1, col, item2)
+            self.table.setItem(row2, col, item1)
 
     def on_row_selected(self):
         row = self.table.currentRow()

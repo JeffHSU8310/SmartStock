@@ -142,6 +142,28 @@ class SinoPacEngine:
 
         return None
 
+    def get_symbol_name(self, code: str) -> str:
+        """取得商品官方中文名稱 (解析 00878 ➔ 國泰永續高股息, 2330 ➔ 台積電, TX00 ➔ 台指期主力)"""
+        code_upper = code.upper()
+        if code_upper in ["TX00", "TXF", "TXFR1", "台指期"]:
+            return "台指期主力"
+        elif code_upper in ["MX00", "MXF", "MXFR1", "小台期"]:
+            return "小台期主力"
+
+        contract = self.get_contract(code)
+        if contract:
+            name = getattr(contract, "name", "")
+            if name:
+                return name
+
+        common_names = {
+            "2330": "台積電", "2317": "鴻海", "2454": "聯發科", "2308": "台達電",
+            "2382": "廣達", "0050": "元大台灣50", "0056": "元大高股息",
+            "00878": "國泰永續高股息", "00919": "群益台灣精選高息", "00929": "復華台灣科技優息",
+            "00940": "元大台灣價值高息", "2881": "富邦金", "2882": "國泰金"
+        }
+        return common_names.get(code, f"股票 {code}")
+
     def get_realtime_quotes(self, code_list: List[str] = None) -> List[Dict]:
         """取得全真 Snapshots 快照報價 (100% 廢除所有寫死假數據 mock_info)"""
         if code_list is None:
@@ -161,19 +183,19 @@ class SinoPacEngine:
                 snapshots = self.api.snapshots(contracts_to_fetch)
                 for snap in snapshots:
                     c_code = getattr(snap, "code", "")
-                    c_name = getattr(snap, "name", c_code)
+                    c_name = getattr(snap, "name", "")
                     c_close = float(getattr(snap, "close", 0.0))
                     c_change = float(getattr(snap, "change_price", 0.0))
                     c_pct = float(getattr(snap, "change_rate", 0.0))
                     c_vol = int(getattr(snap, "total_volume", 0))
 
-                    # 相容 TX00 對應為 TXFR1 之代碼
                     display_code = "TX00" if c_code in ["TXFR1", "TXF"] else c_code
+                    display_name = self.get_symbol_name(display_code) if not c_name else c_name
 
                     if c_close > 0:
                         results.append({
                             "code": display_code,
-                            "name": "台指期主力" if display_code == "TX00" else c_name,
+                            "name": display_name,
                             "price": c_close,
                             "change": c_change,
                             "pct_change": c_pct,
@@ -194,7 +216,7 @@ class SinoPacEngine:
                 pct_change = (change / prev_close * 100.0) if prev_close != 0 else 0.0
                 results.append({
                     "code": code,
-                    "name": "台指期主力" if code == "TX00" else f"股票 {code}",
+                    "name": self.get_symbol_name(code),
                     "price": last_kb['close'],
                     "change": round(change, 2),
                     "pct_change": round(pct_change, 2),
@@ -281,15 +303,12 @@ class SinoPacEngine:
         return df
 
     def get_kbars(self, code: str = "2330", ktype: str = "Day", limit: int = 750) -> List[Dict]:
-        """
-        取得 8 大全週期 K 線歷史數據 (支援 3 年以上全歷史數據抓取與重採樣)
-        """
+        """取得 8 大全週期 K 線歷史數據 (支援 3 年以上全歷史數據抓取與重採樣)"""
         contract = self.get_contract(code)
         if self.is_connected and contract and self._safe_has_code(contract):
             try:
                 today = datetime.date.today()
                 
-                # 若為日K/週K/月K，向前抓取 3 年 (1095 天) 全歷史數據！
                 if ktype in ["Day", "日", "日K", "Week", "週", "Month", "月"]:
                     start_date = (today - datetime.timedelta(days=1095)).strftime("%Y-%m-%d")
                 else:
@@ -297,7 +316,6 @@ class SinoPacEngine:
 
                 end_date = today.strftime("%Y-%m-%d")
 
-                # 向 Shioaji 伺服器請求全真實歷史數據
                 kbars_raw = self.api.kbars(
                     contract=contract,
                     start=start_date,
@@ -305,7 +323,6 @@ class SinoPacEngine:
                 )
                 df_raw = pd.DataFrame({**kbars_raw})
                 if not df_raw.empty:
-                    # 關鍵：貫通 Pandas 金融級 K 棒重採樣引擎！
                     df_res = self._resample_dataframe(df_raw, ktype)
                     
                     if not df_res.empty:
@@ -330,7 +347,7 @@ class SinoPacEngine:
 
         # 備用線下估算 (只在無網路或無 Shioaji 連線時備用)
         kbars = []
-        base_price = 2425.0 if code == "2330" else 3555.0 if code == "2454" else 22500.0 if code == "TX00" else 100.0
+        base_price = 2425.0 if code == "2330" else 3555.0 if code == "2454" else 42650.0 if code == "TX00" else 100.0
         now = datetime.datetime.now()
 
         for i in range(min(limit, 120)):
