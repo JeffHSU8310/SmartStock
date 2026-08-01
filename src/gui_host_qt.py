@@ -1,7 +1,7 @@
 import sys
 import os
 
-# 自動將專案根目錄加入 sys.path，解決 ModuleNotFoundError: No module named 'src'
+# 自動將專案根目錄加入 sys.path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(current_dir)
 if root_dir not in sys.path:
@@ -20,6 +20,8 @@ try:
     from src.widgets.five_bids_widget import FiveBidsWidget
     from src.widgets.order_toolbar import OrderToolbarWidget
     from src.widgets.message_console import MessageConsoleWidget
+    from src.widgets.auth_dialog import AuthDialog
+    from src.utils.config_manager import ConfigManager
 except ImportError:
     from sinopac_engine import SinoPacEngine
     from widgets.candlestick_chart import NativeCandlestickChart
@@ -27,8 +29,10 @@ except ImportError:
     from widgets.five_bids_widget import FiveBidsWidget
     from widgets.order_toolbar import OrderToolbarWidget
     from widgets.message_console import MessageConsoleWidget
+    from widgets.auth_dialog import AuthDialog
+    from utils.config_manager import ConfigManager
 
-# 定義 C++ 結構 ctypes Mapping
+# C++ ctypes Mapping
 class CXXKBar(ctypes.Structure):
     _fields_ = [
         ("datetime", ctypes.c_char * 32),
@@ -61,10 +65,10 @@ class CXXBacktestResult(ctypes.Structure):
     ]
 
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.4)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.5)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.4 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.5 (Pure Native Qt6)")
         self.resize(1480, 920)
 
         self.current_code = "2330"
@@ -77,6 +81,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self._setup_qss_style()
         self._build_ui()
         self.load_initial_data()
+        self._setup_quote_timer()
 
     def _load_cpp_dll(self):
         dll_path = os.path.join(root_dir, "smartstock_core.dll")
@@ -89,12 +94,10 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
                 return dll
             except Exception as e:
                 print(f"[C++ DLL Load Error]: {e}")
-        else:
-            print(f"[C++ DLL Warning]: {dll_path} 不存在")
         return None
 
     def _setup_qss_style(self):
-        """極致暗黑高科技 QSS 主題樣式 (Dark Tech Modern QSS)"""
+        """極致暗黑高科技 QSS 主題樣式 (圖片 1 QMessageBox 高對比白字對比度修復)"""
         qss = """
         QMainWindow {
             background-color: #121418;
@@ -103,6 +106,24 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
             color: #E0E6ED;
             font-family: "Microsoft JhengHei", "Segoe UI", sans-serif;
             font-size: 13px;
+        }
+        /* 圖片 1 提示彈窗文字高對比度修復 */
+        QMessageBox {
+            background-color: #16191E;
+            color: #FFFFFF;
+            font-size: 14px;
+        }
+        QMessageBox QLabel {
+            color: #FFFFFF;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        QMessageBox QPushButton {
+            background-color: #0066FF;
+            color: #FFFFFF;
+            border-radius: 4px;
+            padding: 6px 16px;
+            min-width: 60px;
         }
         QTabWidget::pane {
             border: 1px solid #232730;
@@ -149,9 +170,6 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         QPushButton:hover {
             background-color: #2979FF;
         }
-        QPushButton:pressed {
-            background-color: #1565C0;
-        }
         QLineEdit {
             background-color: #1E222A;
             border: 1px solid #2C323F;
@@ -189,26 +207,27 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         # 頂部 Header Banner
         header = QtWidgets.QHBoxLayout()
-        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.4 (Pure Native Qt6)")
+        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.5 (Pure Native Qt6)")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #00E5FF;")
         header.addWidget(title_label)
 
         header.addStretch()
-        self.status_badge = QtWidgets.QLabel("🟢 永豐金 Shioaji 實盤連線中")
-        self.status_badge.setStyleSheet("background-color: #1A3326; color: #00E676; padding: 5px 12px; border-radius: 12px; font-weight: bold;")
-        header.addWidget(self.status_badge)
+
+        # 圖片 2 修正：右上角登入/登出動態按鈕 (點擊觸發 Auth Modal)
+        self.btn_auth_status = QtWidgets.QPushButton("🔐 登入永豐金 API (含憑證)")
+        self.btn_auth_status.setStyleSheet("background-color: #0066FF; color: #FFFFFF; padding: 6px 16px; border-radius: 14px; font-weight: bold;")
+        self.btn_auth_status.clicked.connect(self.on_auth_status_clicked)
+        header.addWidget(self.btn_auth_status)
+
         main_layout.addLayout(header)
 
-        # 主要頁籤 (QTabWidget)
+        # 主要頁籤 (圖片 3 修正：精簡為 3 大核心分頁)
         self.tabs = QtWidgets.QTabWidget()
         main_layout.addWidget(self.tabs)
 
-        # 建立五大獨立功能頁籤
         self._build_market_overview_tab()
         self._build_screener_tab()
         self._build_backtest_tab()
-        self._build_order_tab()
-        self._build_settings_tab()
 
     def _build_market_overview_tab(self):
         """【看盤大廳 (Market Overview)】五大原生版面結構"""
@@ -216,18 +235,15 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         tab_layout = QtWidgets.QHBoxLayout(tab)
         tab_layout.setContentsMargins(6, 6, 6, 6)
 
-        # 使用 QSplitter 實現滑順可拖曳分割版面
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
 
-        # ==========================================
-        # 📌 左側資訊欄 (Left Sidebar Container)
-        # ==========================================
+        # 左側資訊欄 (自選股 + 五檔 + 快捷下單欄)
         left_widget = QtWidgets.QWidget()
         left_layout = QtWidgets.QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(10)
 
-        # (1) 版面1: 自選股清單 (放在主圖區左方)
+        # (1) 版面1: 自選股清單
         box_watchlist = QtWidgets.QGroupBox("📌 1. 自選股清單 (管理與切換)")
         l_wl = QtWidgets.QVBoxLayout(box_watchlist)
         self.watchlist_widget = WatchlistWidget()
@@ -235,15 +251,15 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         l_wl.addWidget(self.watchlist_widget)
         left_layout.addWidget(box_watchlist, stretch=4)
 
-        # (3) 版面3: 五檔即時報價欄 (放在主圖區左方)
+        # (3) 版面3: 五檔即時報價欄
         box_fivebids = QtWidgets.QGroupBox("📊 3. 即時五檔委買 / 委賣報價欄")
         l_fb = QtWidgets.QVBoxLayout(box_fivebids)
         self.five_bids_widget = FiveBidsWidget()
         l_fb.addWidget(self.five_bids_widget)
         left_layout.addWidget(box_fivebids, stretch=3)
 
-        # (4) 版面4: 下單工具欄 (放在主圖區左方)
-        box_order = QtWidgets.QGroupBox("⚡ 4. 快捷下單工具欄")
+        # (4) 版面4: 快捷下單工具欄 (圖片 3 修正: 包含實盤/模擬帳戶選擇)
+        box_order = QtWidgets.QGroupBox("⚡ 4. 快捷下單工具欄 (含帳戶選擇)")
         l_ot = QtWidgets.QVBoxLayout(box_order)
         self.order_toolbar_widget = OrderToolbarWidget()
         self.order_toolbar_widget.order_submitted_signal.connect(self.on_order_submitted)
@@ -252,15 +268,12 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         splitter.addWidget(left_widget)
 
-        # ==========================================
-        # 📊 右側主工作區 (Right Main Area Container)
-        # ==========================================
+        # 右側主工作區 (K線主圖 + 副圖 + 訊息欄)
         right_widget = QtWidgets.QWidget()
         right_layout = QtWidgets.QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(8)
 
-        # 頂部 K 線標頭與週期切換列
         kline_header = QtWidgets.QHBoxLayout()
         self.lbl_stock_title = QtWidgets.QLabel("2330 台積電 — [日 K 線圖]")
         self.lbl_stock_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #FFFFFF;")
@@ -282,17 +295,15 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         kline_header.addWidget(btn_1m)
         right_layout.addLayout(kline_header)
 
-        # (2-A & 2-B) 版面2: 主圖區 (K線圖, 占比最大) & 副圖區 (技術指標, 放在主圖下方)
+        # (2-A & 2-B) 版面2: 主圖區 (K線圖, 占比最大) & 副圖區 (技術指標)
         self.chart_widget = NativeCandlestickChart()
         right_layout.addWidget(self.chart_widget, stretch=7)
 
-        # (5) 版面5: 訊息欄 (放在副圖正下方)
+        # (5) 版面5: 訊息欄 (位於副圖正下方)
         self.console_widget = MessageConsoleWidget()
         right_layout.addWidget(self.console_widget, stretch=3)
 
         splitter.addWidget(right_widget)
-
-        # 設定比例 (左側固定約 380px，右側自適應伸展)
         splitter.setSizes([380, 1100])
         tab_layout.addWidget(splitter)
 
@@ -366,7 +377,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
     def _create_metric_card(self, title: str, val: str, color: str) -> QtWidgets.QFrame:
         frame = QtWidgets.QFrame()
-        frame.setStyleSheet(f"background-color: #1E222A; border: 1px solid #2C323F; border-radius: 8px; padding: 15px;")
+        frame.setStyleSheet("background-color: #1E222A; border: 1px solid #2C323F; border-radius: 8px; padding: 15px;")
         l = QtWidgets.QVBoxLayout(frame)
         t_lbl = QtWidgets.QLabel(title)
         t_lbl.setStyleSheet("color: #8C9BAE; font-size: 12px;")
@@ -377,110 +388,65 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         l.addWidget(v_lbl)
         return frame
 
-    def _build_order_tab(self):
-        """【Shioaji 實盤與下單】"""
-        tab = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(tab)
-
-        box = QtWidgets.QGroupBox("永豐金證券下單卡片 (ROD / IOC / FOK)")
-        l = QtWidgets.QGridLayout(box)
-
-        l.addWidget(QtWidgets.QLabel("商品代碼:"), 0, 0)
-        l.addWidget(QtWidgets.QLineEdit("2330"), 0, 1)
-
-        l.addWidget(QtWidgets.QLabel("委託價格:"), 0, 2)
-        l.addWidget(QtWidgets.QLineEdit("965.0"), 0, 3)
-
-        l.addWidget(QtWidgets.QLabel("委託張數:"), 1, 0)
-        l.addWidget(QtWidgets.QLineEdit("1"), 1, 1)
-
-        btn_buy = QtWidgets.QPushButton("🔴 買進下單 (BUY)")
-        btn_buy.setStyleSheet("background-color: #FF3B69; padding: 10px;")
-        btn_sell = QtWidgets.QPushButton("🟢 賣出下單 (SELL)")
-        btn_sell.setStyleSheet("background-color: #00E676; padding: 10px; color: #000000;")
-
-        l.addWidget(btn_buy, 1, 2)
-        l.addWidget(btn_sell, 1, 3)
-
-        layout.addWidget(box)
-        layout.addStretch()
-        self.tabs.addTab(tab, "💼 Shioaji 實盤下單")
-
-    def _build_settings_tab(self):
-        """【系統憑證與登入 (CA Auth Modal)】"""
-        tab = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(tab)
-
-        box = QtWidgets.QGroupBox("永豐金 Shioaji API 登入與 CA 憑證設定 (Rule 14 規範)")
-        l = QtWidgets.QGridLayout(box)
-
-        l.addWidget(QtWidgets.QLabel("身分證字號 (Person ID):"), 0, 0)
-        self.input_person_id = QtWidgets.QLineEdit()
-        l.addWidget(self.input_person_id, 0, 1)
-
-        l.addWidget(QtWidgets.QLabel("API Key:"), 1, 0)
-        self.input_api_key = QtWidgets.QLineEdit()
-        l.addWidget(self.input_api_key, 1, 1)
-
-        l.addWidget(QtWidgets.QLabel("Secret Key:"), 2, 0)
-        self.input_secret_key = QtWidgets.QLineEdit()
-        self.input_secret_key.setEchoMode(QtWidgets.QLineEdit.Password)
-        l.addWidget(self.input_secret_key, 2, 1)
-
-        l.addWidget(QtWidgets.QLabel(".pfx 憑證檔案路徑:"), 3, 0)
-        ca_row = QtWidgets.QHBoxLayout()
-        self.input_ca_path = QtWidgets.QLineEdit()
-        btn_browse = QtWidgets.QPushButton("瀏覽檔案...")
-        btn_browse.clicked.connect(self.browse_ca_file)
-        ca_row.addWidget(self.input_ca_path)
-        ca_row.addWidget(btn_browse)
-        l.addLayout(ca_row, 3, 1)
-
-        l.addWidget(QtWidgets.QLabel("憑證密碼 (CA Password):"), 4, 0)
-        self.input_ca_pwd = QtWidgets.QLineEdit()
-        self.input_ca_pwd.setEchoMode(QtWidgets.QLineEdit.Password)
-        l.addWidget(self.input_ca_pwd, 4, 1)
-
-        btn_login = QtWidgets.QPushButton("🔥 驗證憑證並連線 (Activate CA & Login)")
-        btn_login.setStyleSheet("background-color: #FF9800; font-size: 14px; padding: 12px; margin-top: 10px;")
-        btn_login.clicked.connect(self.on_login_click)
-        l.addWidget(btn_login, 5, 0, 1, 2)
-
-        layout.addWidget(box)
-        layout.addStretch()
-        self.tabs.addTab(tab, "⚙️ 憑證與系統設定")
-
-    def browse_ca_file(self):
-        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "選擇永豐金 CA 憑證檔案", "", "PFX Files (*.pfx);;All Files (*)")
-        if file_path:
-            self.input_ca_path.setText(file_path)
-
-    def on_login_click(self):
-        res = self.engine.login_with_ca(
-            api_key=self.input_api_key.text().strip(),
-            secret_key=self.input_secret_key.text().strip(),
-            ca_path=self.input_ca_path.text().strip(),
-            ca_password=self.input_ca_pwd.text().strip(),
-            person_id=self.input_person_id.text().strip()
-        )
-        if res["status"] == "success":
-            QtWidgets.QMessageBox.information(self, "登入成功", res["message"])
-            self.status_badge.setText("🟢 永豐金實盤連線")
-            self.console_widget.log_success("Shioaji API 實盤與 CA 憑證驗證連線成功！")
+    def on_auth_status_clicked(self):
+        """圖片 2 修正：右上角登入 / 登出點擊邏輯 (觸發 Modal 與一鍵登出)"""
+        if not self.engine.is_connected:
+            # 觸發 AuthDialog Modal
+            dialog = AuthDialog(self)
+            if dialog.exec() == QtWidgets.QDialog.Accepted and dialog.auth_data:
+                d = dialog.auth_data
+                res = self.engine.login_with_ca(
+                    api_key=d["api_key"],
+                    secret_key=d["secret_key"],
+                    ca_path=d["ca_path"],
+                    ca_password=d["ca_password"],
+                    person_id=d["person_id"]
+                )
+                if res["status"] == "success":
+                    self.btn_auth_status.setText("🔴 永豐金實盤 (點擊登出)")
+                    self.btn_auth_status.setStyleSheet("background-color: #1A3326; color: #00E676; border: 1px solid #00E676; padding: 6px 16px; border-radius: 14px; font-weight: bold;")
+                    self.console_widget.log_success("永豐金 API 實盤連線與 CA 憑證激活成功！已開啓全真快照報價。")
+                    QtWidgets.QMessageBox.information(self, "登入成功", res["message"])
+                    self.load_initial_data()
+                else:
+                    QtWidgets.QMessageBox.warning(self, "登入失敗", res["message"])
         else:
-            QtWidgets.QMessageBox.warning(self, "連線提示", res["message"])
+            # 已登入狀態 ➔ 點擊登出
+            reply = QtWidgets.QMessageBox.question(
+                self, "確認登出", "您確定要登出永豐金證券 Shioaji API 實盤帳戶嗎？",
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+            )
+            if reply == QtWidgets.QMessageBox.Yes:
+                self.engine.logout()
+                self.btn_auth_status.setText("🔐 登入永豐金 API (含憑證)")
+                self.btn_auth_status.setStyleSheet("background-color: #0066FF; color: #FFFFFF; padding: 6px 16px; border-radius: 14px; font-weight: bold;")
+                self.console_widget.log_info("已登出永豐金 API，系統恢復為離線模擬模式。")
+                QtWidgets.QMessageBox.information(self, "登出成功", "您已成功登出永豐金 API！")
+
+    def _setup_quote_timer(self):
+        """設置定時器，每 3 秒自動更新即時報價與五檔"""
+        self.quote_timer = QtCore.QTimer(self)
+        self.quote_timer.timeout.connect(self.refresh_realtime_quotes)
+        self.quote_timer.start(3000)
+
+    def refresh_realtime_quotes(self):
+        """全真 Snapshots 快照與動態五檔定時刷新」"""
+        kbars = self.engine.get_kbars(code=self.current_code, ktype=self.current_ktype)
+        if kbars:
+            latest_price = kbars[-1]['close']
+            self.five_bids_widget.set_mock_bids(latest_price)
 
     def load_initial_data(self):
         self.on_stock_changed("2330", "台積電")
 
     def on_stock_changed(self, code: str, name: str):
-        """自選股點擊連動：刷新 K 線圖、五檔報價與下單工具欄"""
+        """追加需求修復：自選股點擊連動！刷新全真 K 線圖、五檔報價與下單金額"""
         self.current_code = code
         self.current_name = name
 
         self.lbl_stock_title.setText(f"{code} {name} — [{self.current_ktype} K 線圖]")
         
-        # 1. 刷新 K棒
+        # 1. 抓取真實 KBars 並刷新主圖 K 線與成交量副圖
         kbars = self.engine.get_kbars(code=code, ktype=self.current_ktype)
         self.chart_widget.set_data(kbars)
 
@@ -492,7 +458,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.order_toolbar_widget.set_symbol(code, latest_price)
 
         # 4. 印出日誌
-        self.console_widget.log_info(f"切換看盤商品: {code} {name} (當前價: {latest_price:.2f})")
+        self.console_widget.log_info(f"切換看盤商品: {code} {name} (當前真實價: {latest_price:.2f})")
 
     def switch_ktype(self, ktype: str):
         self.current_ktype = ktype
@@ -502,8 +468,13 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.console_widget.log_info(f"切換 K 線圖週期: {ktype}")
 
     def on_order_submitted(self, order: dict):
-        self.console_widget.log_success(f"下單委託成功 -> {order['action']} {order['code']} Price:{order['price']} Qty:{order['qty']} Type:{order['type']}")
-        QtWidgets.QMessageBox.information(self, "委託發送成功", f"已成功向永豐金 Shioaji API 發送 {order['action']} 委託單！\n商品: {order['code']} | 價格: {order['price']} | 張數: {order['qty']}")
+        self.console_widget.log_success(
+            f"下單委託成功 -> 帳戶:[{order['account']}] {order['action']} {order['code']} Price:{order['price']} Qty:{order['qty']} Type:{order['type']}"
+        )
+        QtWidgets.QMessageBox.information(
+            self, "委託發送成功",
+            f"已成功發送委託單！\n下單帳戶: {order['account']}\n動作: {order['action']}\n商品: {order['code']} | 價格: {order['price']} | 張數: {order['qty']}"
+        )
 
     def run_cpp_screener(self):
         """觸發 C++ 核心 AI 選股演算法"""

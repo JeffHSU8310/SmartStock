@@ -1,7 +1,7 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 
 class OrderToolbarWidget(QtWidgets.QWidget):
-    """快捷下單工具欄元件 (Quick Order Toolbar)"""
+    """快捷下單工具欄元件 (支援實盤 / 模擬帳戶選擇)"""
     order_submitted_signal = QtCore.Signal(dict)
 
     def __init__(self, parent=None):
@@ -19,22 +19,33 @@ class OrderToolbarWidget(QtWidgets.QWidget):
 
         grid = QtWidgets.QGridLayout()
 
-        grid.addWidget(QtWidgets.QLabel("商品代碼:"), 0, 0)
-        self.input_code = QtWidgets.QLineEdit("2330")
-        grid.addWidget(self.input_code, 0, 1)
+        # 1. 新增帳戶選擇列 (圖片 3 需求修復)
+        grid.addWidget(QtWidgets.QLabel("下單帳戶:"), 0, 0)
+        self.combo_account = QtWidgets.QComboBox()
+        self.combo_account.addItems([
+            "🟢 永豐金實盤帳戶 (SinoPac Real)",
+            "🟡 智慧模擬/虛擬交易帳戶 (Paper Trading)"
+        ])
+        self.combo_account.setStyleSheet("color: #00E5FF; font-weight: bold;")
+        grid.addWidget(self.combo_account, 0, 1, 1, 3)
 
-        grid.addWidget(QtWidgets.QLabel("委託類型:"), 0, 2)
+        # 2. 商品與委託條件
+        grid.addWidget(QtWidgets.QLabel("商品代碼:"), 1, 0)
+        self.input_code = QtWidgets.QLineEdit("2330")
+        grid.addWidget(self.input_code, 1, 1)
+
+        grid.addWidget(QtWidgets.QLabel("委託類型:"), 1, 2)
         self.combo_type = QtWidgets.QComboBox()
         self.combo_type.addItems(["ROD (當日有效)", "IOC (立即成交否則取消)", "FOK (立即全部成交否則取消)"])
-        grid.addWidget(self.combo_type, 0, 3)
+        grid.addWidget(self.combo_type, 1, 3)
 
-        grid.addWidget(QtWidgets.QLabel("委託價格:"), 1, 0)
+        grid.addWidget(QtWidgets.QLabel("委託價格:"), 2, 0)
         self.input_price = QtWidgets.QLineEdit("965.0")
-        grid.addWidget(self.input_price, 1, 1)
+        grid.addWidget(self.input_price, 2, 1)
 
-        grid.addWidget(QtWidgets.QLabel("委託張數:"), 1, 2)
+        grid.addWidget(QtWidgets.QLabel("委託張數:"), 2, 2)
         self.input_qty = QtWidgets.QLineEdit("1")
-        grid.addWidget(self.input_qty, 1, 3)
+        grid.addWidget(self.input_qty, 2, 3)
 
         layout.addLayout(grid)
 
@@ -58,6 +69,7 @@ class OrderToolbarWidget(QtWidgets.QWidget):
 
     def submit_order(self, action: str):
         order_info = {
+            "account": self.combo_account.currentText(),
             "action": action,
             "code": self.input_code.text().strip(),
             "price": self.input_price.text().strip(),

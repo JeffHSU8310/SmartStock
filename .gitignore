@@ -5,6 +5,9 @@ __pycache__/
 *.log
 shioaji.log
 
+# Secret & Configuration (Rule 10)
+config.json
+
 # Build & Dist directories
 build/
 dist/
