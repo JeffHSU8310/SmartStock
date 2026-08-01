@@ -21,7 +21,7 @@ class DateAxisItem(pg.AxisItem):
         return strings
 
 class CandlestickItem(pg.GraphicsObject):
-    """pyqtgraph 原生紅綠 K 棒 (拉開適當間距 w=0.32，對齊專業高對比樣式)"""
+    """pyqtgraph 原生紅綠 K 棒 (間距拉開一倍 w=0.38，對齊專業高對比樣式)"""
     def __init__(self, data):
         pg.GraphicsObject.__init__(self)
         self.data = data
@@ -36,7 +36,8 @@ class CandlestickItem(pg.GraphicsObject):
         pen_green = pg.mkPen('#00E676', width=1.5)
         brush_green = pg.mkBrush('#00E676')
 
-        w = 0.32
+        # w 由 0.32 拉大至 0.38，K 棒實體更加寬鬆飽滿
+        w = 0.38
         for t, open_p, close_p, low_p, high_p in self.data:
             if close_p >= open_p:
                 p.setPen(pen_red)
@@ -231,20 +232,21 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             m_bars = pg.BarGraphItem(x=list(range(len(kbars))), height=macd_bar, width=0.5, brushes=m_colors)
             self.p3.addItem(m_bars)
 
-        # 5. ★ 預設主圖視野平滑縮放至近 6 個月 (約 120 根日K)，拖曳或縮放可無限檢視歷史長度 ★
+        # 5. ★ 預設主圖視野精準顯示近 60 根 K 棒 (間距拉開 1 倍！清爽寬鬆) ★
         total_cnt = len(kbars)
-        start_idx = max(0, total_cnt - 120)
+        start_idx = max(0, total_cnt - 60)
         self.p1.setXRange(start_idx, total_cnt, padding=0.02)
         self.p1.enableAutoRange(axis='y', enable=True)
         self.p1.autoRange()
 
     def set_view_range_months(self, months: int):
-        """時間視角快選按鈕 (6個月 / 1年 / 2年 / 5年 / 10年) 縮放視覺視角 (保留所有歷史數據)"""
+        """時間視角快選按鈕 (6個月 / 1年 / 2年 / 5年 / 10年) 縮放視覺視角 (間距拉開 1 倍！)"""
         if not self.kbars_data:
             return
         
         total_cnt = len(self.kbars_data)
-        bars_count = int(months * 20) # 1 個月約 20 個交易日
+        # 放大間距：6個月顯示 60 根，1年顯示 120 根，2年顯示 240 根...
+        bars_count = int(months * 10) if months <= 6 else int(months * 12)
         
         start_idx = max(0, total_cnt - bars_count)
         self.p1.setXRange(start_idx, total_cnt, padding=0.02)

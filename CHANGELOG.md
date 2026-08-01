@@ -4,20 +4,18 @@
 
 ---
 
-## [v1.0.20] - 2026-08-01
+## [v1.0.21] - 2026-08-01
 
-### 🐛 徹底修復 NameError: name 'pd' is not defined 與視角縮放體驗優化 (v1.0.20)
-- **修正匯入缺漏 ([src/widgets/candlestick_chart.py](file:///E:/SmartStock/src/widgets/candlestick_chart.py))**：
-  - 於 `candlestick_chart.py` 補上 `import pandas as pd`，徹底消滅登入切換商品時的 NameError 崩潰。
-- **快選時間視角機制精確定義**：
-  - 點擊 `[6個月]` `[1年]` `[2年]` `[5年]` `[10年]` 按鈕時，僅平滑縮放 X 軸相應寬度，完整保留所有 10 年全歷史數據，支援滾輪無縫往左滑動至歷史深處。
+### 📏 K 棒間距再拉開一倍與視野大擴張 (v1.0.21)
+- **視覺間距拉開 100% ([src/widgets/candlestick_chart.py](file:///E:/SmartStock/src/widgets/candlestick_chart.py))**：
+  - 將預設視野 K 棒數量由 120 根縮減為 60 根（約 60 根精選舒適寬度），K 棒間距精確拉開一倍！
+  - 將 K 棒半寬 `w` 由 `0.32` 放大至 `0.38`，K 棒實體呈現飽滿立體高顏值！
 - **版本規範**：
-  - 恪遵 Rule 13 嚴格 `+0.0.1` 遞增，版本由 `v1.0.19` 升級至 `v1.0.20`。
+  - 恪遵 Rule 13 嚴格 `+0.0.1` 遞增，版本由 `v1.0.20` 升級至 `v1.0.21`。
 
 ---
 
-## [v1.0.19] - 2026-08-01
+## [v1.0.20] - 2026-08-01
 
-### 🚀 10年數據預設6個月視角、精準十字線吸附與 MACD 三層圖表重構 (v1.0.19)
-- 針對期貨商品自動設定安全的 90 天查詢天數，解決 404 Data Not Found 警示。
-- 週/月 K 棒時間戳修正記錄為當週/當月第一個交易日日期。
+### 🐛 徹底修復 NameError: name 'pd' is not defined 與視角縮放體驗優化 (v1.0.20)
+- 於 `candlestick_chart.py` 補上 `import pandas as pd`，徹底消滅登入切換商品時的 NameError 崩潰。

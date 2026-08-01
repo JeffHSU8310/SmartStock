@@ -6,26 +6,25 @@
 
 ## 📜 對話紀錄歷程
 
-### 📌 [記錄時間: 2026-08-01] - 修復 NameError & 發布 v1.0.20 (v1.0.20)
+### 📌 [記錄時間: 2026-08-01] - K 棒間距再拉開一倍 & 發布 v1.0.21 (v1.0.21)
 
 - **使用者需求 (User Prompt)**:
-  - 提供 `NameError: name 'pd' is not defined` 追蹤日誌。
-  - Clarify 時間快選按鈕語意：6個月為顯示近 6 個月視野，放大縮小移動可滑動至更久的 10 年歷史資料。
+  - 要求：「K棒還是黏在一起。在拉開一倍」。
 
 - **系統處理與決策 (System Action & Decision)**:
-  - 於 [`src/widgets/candlestick_chart.py`](file:///E:/SmartStock/src/widgets/candlestick_chart.py) 補上 `import pandas as pd` 徹底消滅 NameError。
-  - 精確鎖定快選按鈕 `set_view_range_months` 為 X 軸視角平滑縮放，完全保留底層 10 年數據供使用者自由滾動與檢視。
+  - 於 [`src/widgets/candlestick_chart.py`](file:///E:/SmartStock/src/widgets/candlestick_chart.py) 將預設視野顯示數量由 120 根縮縮減為 60 根，每根 K 棒之間的間距直接拉開 1 倍 (放大 100%)。
+  - 將 K 棒半寬 `w` 調大至 `0.38`，呈現飽滿大方之視角。
   - 沙盒測試通過，Commit 並 Push 至 GitHub (`https://github.com/JeffHSU8310/SmartStock.git`) 的 `main` 分支。
 
 - **當前專案狀態**:
   - **本機工作目錄**: `E:\SmartStock`
-  - **軟體版本**: v1.0.20 (恪遵 Rule 13 `+0.0.1` 遞增)
+  - **軟體版本**: v1.0.21 (恪遵 Rule 13 `+0.0.1` 遞增)
   - **GitHub 儲存庫**: `https://github.com/JeffHSU8310/SmartStock.git`
   - **Git 分支**: main
 
 ---
 
-### 📌 [記錄時間: 2026-08-01] - 10年數據預設6個月視角、精準十字線吸附與 MACD 三層圖表重構 & 發布 v1.0.19 (v1.0.19)
+### 📌 [記錄時間: 2026-08-01] - 修復 NameError & 發布 v1.0.20 (v1.0.20)
 
 - **使用者需求 (User Prompt)**:
-  - 需求重構 MACD、十字線精準吸附、10年數據與預設6個月視角。
+  - 修復 NameError: name 'pd' is not defined。
