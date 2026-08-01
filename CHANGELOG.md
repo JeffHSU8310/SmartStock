@@ -4,6 +4,25 @@
 
 ---
 
+## [v1.0.3] - 2026-08-01
+
+### 📊 【看盤大廳 (Market Overview)】五大原生 UI 版面重構
+- **自選股管理元件 ([src/widgets/watchlist_widget.py](file:///E:/SmartStock/src/widgets/watchlist_widget.py))**：
+  - 設計自選股管理清單（放在主圖區左方），支援新增 `QLineEdit`+`➕`、刪除 `🗑️` 選定自選、`⬆️` 上移與 `⬇️` 下移調整排序。
+  - 點擊自選股觸發全局訊號，連動刷新 K 線、五檔報價與下單工具欄。
+- **五檔即時報價欄 ([src/widgets/five_bids_widget.py](file:///E:/SmartStock/src/widgets/five_bids_widget.py))**：
+  - 設計買一~買五與賣一~賣五即時檔位、內外盤價格與張數對照欄（放在主圖區左方）。
+- **快捷下單工具欄 ([src/widgets/order_toolbar.py](file:///E:/SmartStock/src/widgets/order_toolbar.py))**：
+  - 設計商品代碼、委託價格、張數、ROD/IOC/FOK 類型選擇與亮紅買進/亮綠賣出下單按鈕（放在主圖區左方）。
+- **主圖區與副圖區繪製 ([src/widgets/candlestick_chart.py](file:///E:/SmartStock/src/widgets/candlestick_chart.py))**：
+  - 主圖區 (K線圖) 佔據最大視覺版面，支援紅綠 K 棒、MA5/MA20 均線與十字游標跟隨；副圖區 (技術指標) 緊臨主圖下方，繪製成交量柱狀圖與指標。
+- **系統訊息日誌欄 ([src/widgets/message_console.py](file:///E:/SmartStock/src/widgets/message_console.py))**：
+  - 置於副圖正下方，Terminal 風格即時輸出 Shioaji API 訂閱、成交回報與系統廣播訊息。
+- **版本規範**：
+  - 恪遵 Rule 13 嚴格 `+0.0.1` 遞增，版本由 `v1.0.2` 升級至 `v1.0.3`。
+
+---
+
 ## [v1.0.2] - 2026-08-01
 
 ### 🔍 全盤本機開發環境診斷與驗證 (Full Environment & Package Audit)
@@ -33,14 +52,3 @@
 - **架構重構與規範定案**：
   - 恪遵 18 項最新重點規則 (Rule 0~17)，徹底捨棄 Web/HTML 網頁架構，採用 **100% C++ / Python / C / C# 原生技術**。
   - 指定 GitHub 儲存庫同步至 `https://github.com/JeffHSU8310/SmartStock.git`。
-- **C++ 核心算力引擎 ([src/core/](file:///E:/SmartStock/src/core/), [src/technical/](file:///E:/SmartStock/src/technical/), [src/strategy/](file:///E:/SmartStock/src/strategy/), [src/backtest/](file:///E:/SmartStock/src/backtest/))**：
-  - 建立 C/C++ 高效數據結構 (`types.hpp`)。
-  - 實現 C++ 技術指標算力 (MA5, MA20, RSI, MACD, KD) 與 K 線型態識別算法 (`indicators.cpp`)。
-  - 實現 C++ 多維度 AI 量化選股器 (`robot_selector.cpp`) 與事件驅動歷史回測引擎 (`backtest_engine.cpp`)。
-- **Python PySide6 原生 GUI 視窗與 K 線圖表 ([src/gui_host_qt.py](file:///E:/SmartStock/src/gui_host_qt.py), [src/widgets/candlestick_chart.py](file:///E:/SmartStock/src/widgets/candlestick_chart.py))**：
-  - 使用 **PySide6 (Qt6 for Python)** 打造獨立原生 5 大面板 (看盤大廳、智慧選股雷達、C++ 回測儀表板、Shioaji 實盤下單、CA 憑證登入)。
-  - 使用 **pyqtgraph** 原生 GPU/CPU 畫布繪製高幀率蠟燭 K 棒、均線、成交量與動態十字游標。
-- **永豐金 Shioaji 券商 API 深入整合 ([src/sinopac_engine.py](file:///E:/SmartStock/src/sinopac_engine.py))**：
-  - 整合 CA 憑證激活 (`activate_ca`)、即時行情 Snapshot、全週期 K線歷史下載與委託下單回報。
-
----
