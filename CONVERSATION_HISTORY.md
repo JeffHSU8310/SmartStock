@@ -6,26 +6,25 @@
 
 ## 📜 對話紀錄歷程
 
-### 📌 [記錄時間: 2026-08-01] - 全真字典對接、8大週期切換、K棒懸停高亮與 DateAxis 發布 v1.0.6 (v1.0.6)
+### 📌 [記錄時間: 2026-08-01] - 追加第 18 條交易安全規範 & 發布 v1.0.7 (v1.0.7)
 
 - **使用者需求 (User Prompt)**:
-  - 依上傳圖片批註指導：
-    1. 自選股「價格錯誤」修復。
-    2. K 線圖頂部 8 大全週期按鈕：`[1分]` `[5分]` `[15分]` `[30分]` `[60分]` `[日]` `[週]` `[月]`。
-    3. 滑鼠游標移到某根 K 線，就顯示該根股價資訊/漲跌點/漲跌幅/成交量。
-    4. K 線與副圖底部 X 軸要顯示真實日期時間。
-    5. 下單欄下拉選單 QSS 字體顏色改為黑色/高對比白字。
-    6. 用戶開放 API KEY & 憑證設定在沙盒測試，要求下單測試一律先使用模擬帳戶。
+  - 要求將此規定寫入規則中：「交易安全：所有測試與測試下單一律嚴格限定於 Shioaji 模擬環境 (`simulation=True`) 或模擬帳戶，確保絕無實盤金錢下單風險！」
 
 - **系統處理與決策 (System Action & Decision)**:
-  - 在沙盒中實測用戶設定（恪遵 Rule 10，`config.json` 寫入 `.gitignore` 不上傳），成功登入永豐金 API，CA 憑證激活成功 (`CA 憑證激活成功: True`)，取得 3 個帳戶，並全真抓取 `2330` 日K與 5分K 棒。
-  - 於 [`src/sinopac_engine.py`](file:///E:/SmartStock/src/sinopac_engine.py) 對接永豐金 Shioaji 官方 `api.Contracts.Stocks/Futures/Indices` 字典與 `api.snapshots()` 快照。
-  - 於 [`src/widgets/candlestick_chart.py`](file:///E:/SmartStock/src/widgets/candlestick_chart.py) 實作 `DateAxisItem` 與游標懸停 K 棒 Listener (`hover_kbar_signal`)。
-  - 於 [`src/gui_host_qt.py`](file:///E:/SmartStock/src/gui_host_qt.py) 實現 8 大全週期切換、頂部懸停高亮欄與 `QComboBox` 高對比黑底白字樣式。
-  - 沙盒測試通過，Commit 並 Push 至 GitHub (`https://github.com/JeffHSU8310/SmartStock.git`) `main` 分支。
+  - 於 [`PROJECT_RULES.md`](file:///E:/SmartStock/PROJECT_RULES.md) 完整寫入 Rule 18 交易安全規範。
+  - 於 [`CHANGELOG.md`](file:///E:/SmartStock/CHANGELOG.md) 紀錄 `v1.0.7` 變更。
+  - 執行 Git Commit 與 Push 同步至 GitHub (`https://github.com/JeffHSU8310/SmartStock.git`) 的 `main` 分支。
 
 - **當前專案狀態**:
   - **本機工作目錄**: `E:\SmartStock`
-  - **軟體版本**: v1.0.6 (恪遵 Rule 13 `+0.0.1` 遞增)
+  - **軟體版本**: v1.0.7 (恪遵 Rule 13 `+0.0.1` 遞增)
   - **GitHub 儲存庫**: `https://github.com/JeffHSU8310/SmartStock.git`
   - **Git 分支**: main
+
+---
+
+### 📌 [記錄時間: 2026-08-01] - 全真字典對接、8大週期切換、K棒懸停高亮與 DateAxis 發布 v1.0.6 (v1.0.6)
+
+- **使用者需求 (User Prompt)**:
+  - 依上傳圖片批註指導：修復自選股價格、8大週期按鈕、懸停高亮資訊、DateAxis 時間軸、QSS 下拉選單黑底白字。
