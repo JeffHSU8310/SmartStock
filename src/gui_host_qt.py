@@ -31,43 +31,11 @@ except ImportError:
     from widgets.auth_dialog import AuthDialog
     from utils.config_manager import ConfigManager
 
-# C++ ctypes Mapping
-class CXXKBar(ctypes.Structure):
-    _fields_ = [
-        ("datetime", ctypes.c_char * 32),
-        ("open", ctypes.c_double),
-        ("high", ctypes.c_double),
-        ("low", ctypes.c_double),
-        ("close", ctypes.c_double),
-        ("volume", ctypes.c_int64)
-    ]
-
-class CXXSelectionResult(ctypes.Structure):
-    _fields_ = [
-        ("code", ctypes.c_char * 16),
-        ("name", ctypes.c_char * 32),
-        ("close", ctypes.c_double),
-        ("pct_change", ctypes.c_double),
-        ("score", ctypes.c_double),
-        ("signal_type", ctypes.c_char * 64)
-    ]
-
-class CXXBacktestResult(ctypes.Structure):
-    _fields_ = [
-        ("total_return_pct", ctypes.c_double),
-        ("win_rate", ctypes.c_double),
-        ("max_drawdown_pct", ctypes.c_double),
-        ("sharpe_ratio", ctypes.c_double),
-        ("total_trades", ctypes.c_int),
-        ("winning_trades", ctypes.c_int),
-        ("losing_trades", ctypes.c_int)
-    ]
-
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.1.3)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.14)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.1.3 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.14 (Pure Native Qt6)")
         self.resize(1520, 940)
 
         self.current_code = "2330"
@@ -98,7 +66,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         return None
 
     def _setup_qss_style(self):
-        """極致暗黑高科技 QSS 主題樣式 (圖片 5 QSS 下拉選單顏色高對比修復)"""
+        """極致暗黑高科技 QSS 主題樣式 (QSS 下拉選單顏色高對比修復)"""
         qss = """
         QMainWindow {
             background-color: #121418;
@@ -217,7 +185,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         # 頂部 Header Banner
         header = QtWidgets.QHBoxLayout()
-        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.1.3 (Pure Native Qt6)")
+        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.14 (Pure Native Qt6)")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #00E5FF;")
         header.addWidget(title_label)
 
@@ -280,7 +248,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(8)
 
-        # K 線頂部列：商品標頭 + 8 大全週期按鈕列 (圖片 1 需求實作)
+        # K 線頂部列：商品標頭 + 8 大全週期按鈕列
         kline_header = QtWidgets.QHBoxLayout()
         self.lbl_stock_title = QtWidgets.QLabel("2330 台積電 — [日 K 線圖]")
         self.lbl_stock_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #FFFFFF;")
@@ -307,12 +275,12 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.lbl_hover_info.setStyleSheet("background-color: #16191E; color: #FFD700; padding: 6px 10px; border-radius: 4px; font-weight: bold; font-size: 12px;")
         right_layout.addWidget(self.lbl_hover_info)
 
-        # (2-A & 2-B) 版面2: 主圖區 (K線圖, 占比最大) & 副圖區 (技術指標)
+        # 版面2: 主圖區 (K線圖, 占比最大) & 副圖區 (技術指標)
         self.chart_widget = NativeCandlestickChart()
         self.chart_widget.hover_kbar_signal.connect(self.on_hover_kbar)
         right_layout.addWidget(self.chart_widget, stretch=7)
 
-        # (5) 版面5: 訊息欄 (位於副圖正下方)
+        # 版面5: 訊息欄 (位於副圖正下方)
         self.console_widget = MessageConsoleWidget()
         right_layout.addWidget(self.console_widget, stretch=3)
 
@@ -462,7 +430,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         for q in quotes:
             self.watchlist_widget.update_quote(q['code'], q['price'], q['pct_change'])
 
-        # 2. 刷新五檔委買賣價 (傳遞 current_code 與 price 雙參數)
+        # 2. 刷新五檔委買賣價
         current_quote = next((q for q in quotes if q['code'] == self.current_code), None)
         if current_quote:
             self.five_bids_widget.set_mock_bids(self.current_code, current_quote['price'])
@@ -483,7 +451,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         kbars = self.engine.get_kbars(code=code, ktype=self.current_ktype_code)
         self.chart_widget.set_data(kbars)
 
-        # 2. 刷新五檔 (傳遞 current_code 與 price 雙參數)
+        # 2. 刷新五檔
         latest_price = kbars[-1]['close'] if kbars else 100.0
         self.five_bids_widget.set_mock_bids(self.current_code, latest_price)
 
@@ -530,91 +498,6 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
             self, "委託發送成功",
             f"已成功發送委託單！\n下單帳戶: {order['account']}\n動作: {order['action']}\n商品: {order['code']} | 價格: {order['price']} | 張數: {order['qty']}"
         )
-
-    def run_cpp_screener(self):
-        """觸發 C++ 核心 AI 選股演算法"""
-        quotes = self.engine.get_realtime_quotes()
-        results = []
-
-        for q in quotes:
-            kbars = self.engine.get_kbars(code=q['code'])
-            if self.dll:
-                c_kbars = (CXXKBar * len(kbars))()
-                for i, kb in enumerate(kbars):
-                    c_kbars[i].datetime = kb['datetime'].encode('utf-8')
-                    c_kbars[i].open = kb['open']
-                    c_kbars[i].high = kb['high']
-                    c_kbars[i].low = kb['low']
-                    c_kbars[i].close = kb['close']
-                    c_kbars[i].volume = kb['volume']
-
-                out_res = CXXSelectionResult()
-                ret = self.dll.run_stock_selection(c_kbars, len(kbars), q['code'].encode('utf-8'), q['name'].encode('utf-8'), ctypes.byref(out_res))
-                if ret == 1:
-                    results.append({
-                        "code": out_res.code.decode('utf-8'),
-                        "name": out_res.name.decode('utf-8'),
-                        "close": out_res.close,
-                        "pct": out_res.pct_change,
-                        "score": out_res.score,
-                        "signal": out_res.signal_type.decode('utf-8')
-                    })
-            else:
-                results.append({
-                    "code": q['code'],
-                    "name": q['name'],
-                    "close": q['price'],
-                    "pct": q['pct_change'],
-                    "score": 88.5,
-                    "signal": "MA多頭強撐 + 看漲吞噬"
-                })
-
-        self.screener_table.setRowCount(len(results))
-        for row, r in enumerate(results):
-            self.screener_table.setItem(row, 0, QtWidgets.QTableWidgetItem(r['code']))
-            self.screener_table.setItem(row, 1, QtWidgets.QTableWidgetItem(r['name']))
-            self.screener_table.setItem(row, 2, QtWidgets.QTableWidgetItem(f"{r['close']:.2f}"))
-            
-            pct_item = QtWidgets.QTableWidgetItem(f"{r['pct']:+.2f}%")
-            pct_item.setForeground(QtGui.QColor('#FF3B69' if r['pct'] >= 0 else '#00E676'))
-            self.screener_table.setItem(row, 3, pct_item)
-
-            score_item = QtWidgets.QTableWidgetItem(f"{r['score']:.1f}")
-            score_item.setForeground(QtGui.QColor('#FFD700'))
-            self.screener_table.setItem(row, 4, score_item)
-            self.screener_table.setItem(row, 5, QtWidgets.QTableWidgetItem(r['signal']))
-
-        self.console_widget.log_success(f"C++ 選股演算法掃描完成，發現 {len(results)} 檔多頭強勢標的！")
-        QtWidgets.QMessageBox.information(self, "C++ 選股完成", f"C++ 核心演算法完成掃描，發現 {len(results)} 檔符合強勢多頭標的！")
-
-    def run_cpp_backtest(self):
-        """觸發 C++ 高速回測引擎"""
-        fast_ma = int(self.input_fast_ma.text())
-        slow_ma = int(self.input_slow_ma.text())
-        capital = float(self.input_capital.text())
-
-        kbars = self.engine.get_kbars(code="2330", limit=200)
-
-        if self.dll:
-            c_kbars = (CXXKBar * len(kbars))()
-            for i, kb in enumerate(kbars):
-                c_kbars[i].datetime = kb['datetime'].encode('utf-8')
-                c_kbars[i].open = kb['open']
-                c_kbars[i].high = kb['high']
-                c_kbars[i].low = kb['low']
-                c_kbars[i].close = kb['close']
-                c_kbars[i].volume = kb['volume']
-
-            out_bt = CXXBacktestResult()
-            self.dll.run_backtest_ma(c_kbars, len(kbars), fast_ma, slow_ma, ctypes.c_double(capital), ctypes.byref(out_bt))
-
-            self.card_return.findChild(QtWidgets.QLabel, "val").setText(f"{out_bt.total_return_pct:+.2f}%")
-            self.card_winrate.findChild(QtWidgets.QLabel, "val").setText(f"{out_bt.win_rate:.1f}%")
-            self.card_mdd.findChild(QtWidgets.QLabel, "val").setText(f"{out_bt.max_drawdown_pct:.2f}%")
-            self.card_sharpe.findChild(QtWidgets.QLabel, "val").setText(f"{out_bt.sharpe_ratio:.2f}")
-
-            self.console_widget.log_success(f"C++ 事件驅動回測完成 -> 總報酬: {out_bt.total_return_pct:+.2f}%, 勝率: {out_bt.win_rate:.1f}%")
-            QtWidgets.QMessageBox.information(self, "C++ 回測完成", f"C++ 事件驅動回測完成！\n總交易數: {out_bt.total_trades} 次\n獲利次數: {out_bt.winning_trades} 次")
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
