@@ -1,6 +1,7 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 import numpy as np
+import pandas as pd
 from typing import List, Dict
 
 class DateAxisItem(pg.AxisItem):
@@ -230,7 +231,7 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             m_bars = pg.BarGraphItem(x=list(range(len(kbars))), height=macd_bar, width=0.5, brushes=m_colors)
             self.p3.addItem(m_bars)
 
-        # 5. ★ 預設顯示 6 個月視野 (視區間約 120 根日 K) ★
+        # 5. ★ 預設主圖視野平滑縮放至近 6 個月 (約 120 根日K)，拖曳或縮放可無限檢視歷史長度 ★
         total_cnt = len(kbars)
         start_idx = max(0, total_cnt - 120)
         self.p1.setXRange(start_idx, total_cnt, padding=0.02)
@@ -238,7 +239,7 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.p1.autoRange()
 
     def set_view_range_months(self, months: int):
-        """時間視角快選按鈕 (6個月 / 1年 / 2年 / 5年 / 10年) 瞬間精準縮放"""
+        """時間視角快選按鈕 (6個月 / 1年 / 2年 / 5年 / 10年) 縮放視覺視角 (保留所有歷史數據)"""
         if not self.kbars_data:
             return
         
