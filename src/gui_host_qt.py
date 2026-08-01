@@ -32,16 +32,17 @@ except ImportError:
     from utils.config_manager import ConfigManager
 
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.22)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.23)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.22 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.23 (Pure Native Qt6)")
         self.resize(1520, 940)
 
         self.current_code = "2330"
         self.current_name = "台積電"
         self.current_ktype = "日"
         self.current_ktype_code = "Day"
+        self.current_range_months = 6
         self.period_buttons = {}
         self.range_buttons = {}
 
@@ -186,7 +187,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         # 頂部 Header Banner
         header = QtWidgets.QHBoxLayout()
-        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.22 (Pure Native Qt6)")
+        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.23 (Pure Native Qt6)")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #00E5FF;")
         header.addWidget(title_label)
 
@@ -257,14 +258,14 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         kline_header.addStretch()
 
-        # 1. 5 大時間快選按鈕列 ([6個月] [1年] [2年] [5年] [10年])
+        # 1. 5 大時間快選按鈕列 ([6個月] [1年] [2年] [5年] [10年]) (高亮狀態切換修復)
         range_periods = [
             ("6個月", 6), ("1年", 12), ("2年", 24), ("5年", 60), ("10年", 120)
         ]
         for text, months in range_periods:
             btn = QtWidgets.QPushButton(text)
-            btn.setStyleSheet("background-color: #1E222A; color: #00E5FF; font-weight: bold; border: 1px solid #2C323F; border-radius: 4px; padding: 4px 8px;")
-            btn.clicked.connect(lambda _, m=months: self.chart_widget.set_view_range_months(m))
+            btn.clicked.connect(lambda _, m=months: self.on_range_button_clicked(m))
+            self.range_buttons[months] = btn
             kline_header.addWidget(btn)
 
         kline_header.addWidget(QtWidgets.QLabel("|"))
@@ -381,16 +382,30 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         l.addWidget(v_lbl)
         return frame
 
-    def update_period_button_styles(self):
-        """更新 8 大全週期按鈕選中高亮狀態"""
+    def update_button_styles(self):
+        """更新 8 大全週期與 5 大時間快選按鈕選中高亮狀態"""
         style_active = "background-color: #0066FF; color: #FFFFFF; font-weight: bold; border-radius: 4px; padding: 4px 10px;"
-        style_normal = "background-color: #1E222A; color: #00E5FF; font-weight: bold; border-radius: 4px; padding: 4px 10px;"
+        style_normal = "background-color: #1E222A; color: #00E5FF; font-weight: bold; border: 1px solid #2C323F; border-radius: 4px; padding: 4px 8px;"
 
         for text, btn in self.period_buttons.items():
             if text == self.current_ktype:
                 btn.setStyleSheet(style_active)
             else:
                 btn.setStyleSheet(style_normal)
+
+        for months, btn in self.range_buttons.items():
+            if months == self.current_range_months:
+                btn.setStyleSheet(style_active)
+            else:
+                btn.setStyleSheet(style_normal)
+
+    def on_range_button_clicked(self, months: int):
+        """觸發時間快選縮放視角 (6個月, 1年, 2年, 5年, 10年)"""
+        self.current_range_months = months
+        self.update_button_styles()
+        self.chart_widget.set_view_range_months(months)
+        if self.engine.is_connected:
+            self.console_widget.log_info(f"切換圖表時間快選視角: {months} 個月")
 
     def on_auth_status_clicked(self):
         if not self.engine.is_connected:
@@ -462,7 +477,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
                 self.lbl_stock_title.setText(f"{self.current_code} {self.current_name} — [{self.current_ktype} K 線圖]")
 
     def load_initial_data(self):
-        self.update_period_button_styles()
+        self.update_button_styles()
         self.on_stock_changed("2330", "台積電")
 
     def on_stock_changed(self, code: str, name: str = ""):
@@ -515,7 +530,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         display_name = ktype_name if ktype_name else ktype_code
         self.current_ktype = display_name
         self.current_ktype_code = ktype_code
-        self.update_period_button_styles()
+        self.update_button_styles()
 
         self.lbl_stock_title.setText(f"{self.current_code} {self.current_name} — [{display_name} K 線圖]")
         kbars = self.engine.get_kbars(code=self.current_code, ktype=ktype_code)

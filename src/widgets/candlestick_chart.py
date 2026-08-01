@@ -21,7 +21,7 @@ class DateAxisItem(pg.AxisItem):
         return strings
 
 class CandlestickItem(pg.GraphicsObject):
-    """pyqtgraph 原生紅綠 K 棒 (間距拉開一倍 w=0.38，對齊專業高對比樣式)"""
+    """pyqtgraph 原生紅綠 K 棒 (間隔正好等於一根 K 棒的寬度: w=0.25)"""
     def __init__(self, data):
         pg.GraphicsObject.__init__(self)
         self.data = data
@@ -36,8 +36,8 @@ class CandlestickItem(pg.GraphicsObject):
         pen_green = pg.mkPen('#00E676', width=1.5)
         brush_green = pg.mkBrush('#00E676')
 
-        # w 由 0.32 拉大至 0.38，K 棒實體更加寬鬆飽滿
-        w = 0.38
+        # w=0.25 (實體總寬 0.5，兩棒中心距 1.0 ➔ 間隔恰好為 0.5，剛好等於一根 K 棒的寬度!)
+        w = 0.25
         for t, open_p, close_p, low_p, high_p in self.data:
             if close_p >= open_p:
                 p.setPen(pen_red)
@@ -179,7 +179,7 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             closes.append(kb['close'])
             volumes.append(kb['volume'])
 
-        # 1. 畫主圖 K 棒
+        # 1. 畫主圖 K 棒 (w=0.25, 間隔正好等於一根 K 棒寬度)
         item = CandlestickItem(chart_data)
         self.p1.addItem(item)
 
@@ -207,7 +207,7 @@ class NativeCandlestickChart(QtWidgets.QWidget):
 
         # 3. 畫副圖一成交量柱狀圖
         v_colors = ['#FF3B69' if c >= o else '#00E676' for o, c in zip([k['open'] for k in kbars], closes)]
-        vol_bars = pg.BarGraphItem(x=list(range(len(kbars))), height=volumes, width=0.6, brushes=v_colors)
+        vol_bars = pg.BarGraphItem(x=list(range(len(kbars))), height=volumes, width=0.5, brushes=v_colors)
         self.p2.addItem(vol_bars)
 
         # 4. 計算並繪製副圖二 MACD 指標 (EMA12, EMA26, DIF, DEA, MACD Bar)
@@ -232,26 +232,32 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             m_bars = pg.BarGraphItem(x=list(range(len(kbars))), height=macd_bar, width=0.5, brushes=m_colors)
             self.p3.addItem(m_bars)
 
-        # 5. ★ 預設主圖視野精準顯示近 60 根 K 棒 (間距拉開 1 倍！清爽寬鬆) ★
-        total_cnt = len(kbars)
-        start_idx = max(0, total_cnt - 60)
-        self.p1.setXRange(start_idx, total_cnt, padding=0.02)
-        self.p1.enableAutoRange(axis='y', enable=True)
-        self.p1.autoRange()
+        # 5. 預設主圖視野精準縮放至近 6 個月預設 (顯示 30 根精選大寬度 K 棒)
+        self.set_view_range_months(6)
 
     def set_view_range_months(self, months: int):
-        """時間視角快選按鈕 (6個月 / 1年 / 2年 / 5年 / 10年) 縮放視覺視角 (間距拉開 1 倍！)"""
+        """★ 修正時間快選按鈕：縮放 X 軸並針對可視區域自適應 Y 軸 (100% 生效修復) ★"""
         if not self.kbars_data:
             return
         
         total_cnt = len(self.kbars_data)
-        # 放大間距：6個月顯示 60 根，1年顯示 120 根，2年顯示 240 根...
-        bars_count = int(months * 10) if months <= 6 else int(months * 12)
-        
+        # 對應各月數要顯示的 K 棒數量 (6個月: 30根, 1年: 60根, 2年: 120根, 5年: 300根, 10年: 600根)
+        bars_map = {6: 30, 12: 60, 24: 120, 60: 300, 120: 600}
+        bars_count = bars_map.get(months, 30)
+
         start_idx = max(0, total_cnt - bars_count)
-        self.p1.setXRange(start_idx, total_cnt, padding=0.02)
-        self.p1.enableAutoRange(axis='y', enable=True)
-        self.p1.autoRange()
+        
+        # 1. 100% 精準設定 X 軸縮放視角 (不再調用覆蓋 X 軸的 autoRange!)
+        self.p1.setXRange(start_idx, total_cnt, padding=0.01)
+
+        # 2. 自動針對目前畫面可視之 K 棒最高最低價縮放 Y 軸，視野極佳
+        visible_kbars = self.kbars_data[start_idx:total_cnt]
+        if visible_kbars:
+            lows = [k['low'] for k in visible_kbars]
+            highs = [k['high'] for k in visible_kbars]
+            min_y, max_y = min(lows), max(highs)
+            padding_y = (max_y - min_y) * 0.05 if max_y != min_y else 10.0
+            self.p1.setYRange(min_y - padding_y, max_y + padding_y, padding=0)
 
     def on_mouse_moved(self, pos):
         """游標懸停處理：X 軸精準吸附至 K 棒正中央 round(mouse_x)"""
