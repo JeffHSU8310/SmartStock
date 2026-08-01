@@ -165,7 +165,7 @@ class SinoPacEngine:
         return common_names.get(code, f"股票 {code}")
 
     def get_realtime_quotes(self, code_list: List[str] = None) -> List[Dict]:
-        """取得全真 Snapshots 快照報價 (100% 廢除所有寫死假數據 mock_info)"""
+        """取得全真 Snapshots 快照報價 (未登入時回傳離線基礎結構，登入後回傳 Shioaji 全真快照)"""
         if code_list is None:
             code_list = ["2330", "2317", "2454", "2308", "2382", "0050", "0056", "TX00"]
 
@@ -206,22 +206,16 @@ class SinoPacEngine:
             except Exception as e:
                 logging.warning(f"抓取全真 Snapshots 失敗: {e}")
 
-        # 若快照尚無開盤報價，直接從 Shioaji 全真歷史日 K 棒最後一筆取得最新真實收盤價 (完全零寫死假數字)
+        # 未登入狀態：只填入商品標頭與名字，價格顯示 "--"
         for code in code_list:
-            kbars = self.get_kbars(code=code, ktype="Day", limit=1)
-            if kbars:
-                last_kb = kbars[-1]
-                prev_close = last_kb['open']
-                change = last_kb['close'] - prev_close
-                pct_change = (change / prev_close * 100.0) if prev_close != 0 else 0.0
-                results.append({
-                    "code": code,
-                    "name": self.get_symbol_name(code),
-                    "price": last_kb['close'],
-                    "change": round(change, 2),
-                    "pct_change": round(pct_change, 2),
-                    "volume": last_kb['volume']
-                })
+            results.append({
+                "code": code,
+                "name": self.get_symbol_name(code),
+                "price": 0.0,
+                "change": 0.0,
+                "pct_change": 0.0,
+                "volume": 0
+            })
 
         return results
 
@@ -303,9 +297,15 @@ class SinoPacEngine:
         return df
 
     def get_kbars(self, code: str = "2330", ktype: str = "Day", limit: int = 750) -> List[Dict]:
-        """取得 8 大全週期 K 線歷史數據 (支援 3 年以上全歷史數據抓取與重採樣)"""
+        """
+        取得 8 大全週期 K 線歷史數據 (未登入時回傳空清單保持畫布空白，登入後回傳 Shioaji 3年全真實數據)
+        """
+        if not self.is_connected:
+            # 尚未登入 API 時：主圖保持乾淨空白，不畫任何模擬柱狀圖鬼樣子！
+            return []
+
         contract = self.get_contract(code)
-        if self.is_connected and contract and self._safe_has_code(contract):
+        if contract and self._safe_has_code(contract):
             try:
                 today = datetime.date.today()
                 
@@ -345,19 +345,4 @@ class SinoPacEngine:
             except Exception as e:
                 logging.warning(f"全真 KBars ({code}, {ktype}) 重採樣與抓取警示: {e}")
 
-        # 備用線下估算 (只在無網路或無 Shioaji 連線時備用)
-        kbars = []
-        base_price = 2425.0 if code == "2330" else 3555.0 if code == "2454" else 42650.0 if code == "TX00" else 100.0
-        now = datetime.datetime.now()
-
-        for i in range(min(limit, 120)):
-            dt_str = (now - datetime.timedelta(days=limit - i)).strftime("%Y-%m-%d")
-            kbars.append({
-                "datetime": dt_str,
-                "open": base_price,
-                "high": base_price + 10.0,
-                "low": base_price - 10.0,
-                "close": base_price + 5.0,
-                "volume": 1000 + i * 10
-            })
-        return kbars
+        return []

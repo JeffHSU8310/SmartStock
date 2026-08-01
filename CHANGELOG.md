@@ -4,21 +4,19 @@
 
 ---
 
-## [v1.0.17] - 2026-08-01
+## [v1.0.18] - 2026-08-01
 
-### 🏷️ 實作官方商品中文名稱動態解析器 (get_symbol_name) (v1.0.17)
-- **實作官方商品中文名稱動態解析器 ([src/sinopac_engine.py](file:///E:/SmartStock/src/sinopac_engine.py))**：
-  - 新增 `get_symbol_name(code)` 方法，自動解析 00878 (國泰永續高股息)、00919 (群益台灣精選高息)、00929 (復華台灣科技優息) 與 TX00 (台指期主力) 等官方標準中文名稱。
-  - 徹底解決輸入代碼顯示「股票 00878」的名稱顯示問題！
-- **自選股表格與主圖連動 ([src/widgets/watchlist_widget.py](file:///E:/SmartStock/src/widgets/watchlist_widget.py) & [src/gui_host_qt.py](file:///E:/SmartStock/src/gui_host_qt.py))**：
-  - 新增股票或全真快照刷新時，自選股表格與主圖頂部 100% 同步顯示正確商品名稱。
+### 🎨 未登入前主圖保持乾淨空白，登入後載入全真數據 (v1.0.18)
+- **未登入畫布淨化 ([src/sinopac_engine.py](file:///E:/SmartStock/src/sinopac_engine.py) & [src/gui_host_qt.py](file:///E:/SmartStock/src/gui_host_qt.py))**：
+  - 於 `SinoPacEngine.get_kbars` 中設定：當未登入永豐金 API 時，直接傳回空清單 `[]`，徹底消除離線狀態下畫面上亂畫的模擬柱狀圖！
+  - 主圖頂部顯示溫馨指示：`"💡 尚未連線 API：請點擊右上角「登入永豐金 API」開始載入全真行情與 K 線圖"`。
+  - 登入 API 成功並切換選擇商品後，向伺服器請求全真實 3 年數據，呈現精確無誤的 K 線圖！
 - **版本規範**：
-  - 恪遵 Rule 13 嚴格 `+0.0.1` 遞增，版本由 `v1.0.16` 升級至 `v1.0.17`。
+  - 恪遵 Rule 13 嚴格 `+0.0.1` 遞增，版本由 `v1.0.17` 升級至 `v1.0.18`。
 
 ---
 
-## [v1.0.16] - 2026-08-01
+## [v1.0.17] - 2026-08-01
 
-### 🚀 重構台指期貨合約對接與貫通 Pandas 金融級 3年多週期重採樣引擎 (v1.0.16)
-- 修正 Shioaji 官方期貨合約存取結構：當輸入 `TX00` / `TXF` 時，精確抓取 `api.Contracts.Futures.TXF.TXFR1`（台指期主力近一）。
-- 貫通 Pandas 金融級 3 年多週期 Resample 重採樣引擎。
+### 🏷️ 實作官方商品中文名稱動態解析器 (get_symbol_name) (v1.0.17)
+- 新增 `get_symbol_name(code)` 方法，自動解析 00878 (國泰永續高股息)、TX00 (台指期主力) 等官方標準中文名稱。

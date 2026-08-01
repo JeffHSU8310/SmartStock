@@ -32,10 +32,10 @@ except ImportError:
     from utils.config_manager import ConfigManager
 
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.17)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.18)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.17 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.18 (Pure Native Qt6)")
         self.resize(1520, 940)
 
         self.current_code = "2330"
@@ -185,7 +185,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         # 頂部 Header Banner
         header = QtWidgets.QHBoxLayout()
-        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.17 (Pure Native Qt6)")
+        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.18 (Pure Native Qt6)")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #00E5FF;")
         header.addWidget(title_label)
 
@@ -270,8 +270,8 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         right_layout.addLayout(kline_header)
 
-        # 游標懸停 K 棒動態高亮資訊欄 (含 MA5 / MA20 趨勢箭頭)
-        self.lbl_hover_info = QtWidgets.QLabel("💡 移至 K 線可即時檢視該棒詳細價格、漲跌點數、均線趨勢與成交量")
+        # 游標懸停 K 棒動態高亮資訊欄 (未登入時呈現溫馨指示)
+        self.lbl_hover_info = QtWidgets.QLabel("💡 尚未連線 API：請點擊右上角「登入永豐金 API」開始載入全真行情與 K 線圖")
         self.lbl_hover_info.setStyleSheet("background-color: #16191E; color: #FFD700; padding: 6px 10px; border-radius: 4px; font-weight: bold; font-size: 12px;")
         right_layout.addWidget(self.lbl_hover_info)
 
@@ -395,6 +395,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
                     self.btn_auth_status.setText("🔴 永豐金實盤 (點擊登出)")
                     self.btn_auth_status.setStyleSheet("background-color: #1A3326; color: #00E676; border: 1px solid #00E676; padding: 6px 16px; border-radius: 14px; font-weight: bold;")
                     self.console_widget.log_success("永豐金 API 實盤連線與 CA 憑證激活成功！已開啓全真快照報價。")
+                    self.lbl_hover_info.setText("💡 移至 K 線可即時檢視該棒詳細價格、漲跌點數、均線趨勢與成交量")
                     QtWidgets.QMessageBox.information(self, "登入成功", res["message"])
                     self.refresh_realtime_quotes()
                     self.on_stock_changed(self.current_code, self.current_name)
@@ -409,7 +410,9 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
                 self.engine.logout()
                 self.btn_auth_status.setText("🔐 登入永豐金 API (含憑證)")
                 self.btn_auth_status.setStyleSheet("background-color: #0066FF; color: #FFFFFF; padding: 6px 16px; border-radius: 14px; font-weight: bold;")
-                self.console_widget.log_info("已登出永豐金 API，系統恢復為離線模擬模式。")
+                self.console_widget.log_info("已登出永豐金 API，主圖恢復為乾淨空白模式。")
+                self.lbl_hover_info.setText("💡 尚未連線 API：請點擊右上角「登入永豐金 API」開始載入全真行情與 K 線圖")
+                self.chart_widget.set_data([])
                 QtWidgets.QMessageBox.information(self, "登出成功", "您已成功登出永豐金 API！")
 
     def _setup_quote_timer(self):
@@ -420,6 +423,9 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
     def refresh_realtime_quotes(self):
         """全真 Snapshots 快照刷新自選股表格與五檔現價 (包含真實中文名稱連動)"""
+        if not self.engine.is_connected:
+            return
+
         codes = [self.watchlist_widget.table.item(r, 0).text() for r in range(self.watchlist_widget.table.rowCount()) if self.watchlist_widget.table.item(r, 0)]
         if not codes:
             codes = ["2330", "2317", "2454", "2308", "2382", "0050", "0056", "TX00"]
@@ -432,7 +438,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         # 2. 刷新五檔委買賣價
         current_quote = next((q for q in quotes if q['code'] == self.current_code), None)
-        if current_quote:
+        if current_quote and current_quote['price'] > 0:
             self.five_bids_widget.set_mock_bids(self.current_code, current_quote['price'])
             self.order_toolbar_widget.set_symbol(self.current_code, current_quote['price'])
             
@@ -447,10 +453,9 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.on_stock_changed("2330", "台積電")
 
     def on_stock_changed(self, code: str, name: str = ""):
-        """自選股點擊連動：徹底重置切換商品 K 線圖資訊 (自動對接官方中文名稱)"""
+        """自選股點擊連動：未登入保持空白，登入後載入全真數據"""
         self.current_code = code
         
-        # 解析商品的真實中文名稱 (例: 00878 ➔ 國泰永續高股息)
         real_name = self.engine.get_symbol_name(code)
         if real_name and not real_name.startswith("股票 "):
             self.current_name = real_name
@@ -461,19 +466,17 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         self.lbl_stock_title.setText(f"{code} {self.current_name} — [{self.current_ktype} K 線圖]")
         
-        # 1. 抓取該商品最新重採樣 KBars 並 100% 刷新重置主圖 K 線與副圖
+        # 1. 抓取該商品最新重採樣 KBars (未登入傳回 []，畫布自動空白)
         kbars = self.engine.get_kbars(code=code, ktype=self.current_ktype_code)
         self.chart_widget.set_data(kbars)
 
-        # 2. 刷新五檔
-        latest_price = kbars[-1]['close'] if kbars else 100.0
+        # 2. 刷新五檔與下單欄
+        latest_price = kbars[-1]['close'] if kbars else 2425.0
         self.five_bids_widget.set_mock_bids(self.current_code, latest_price)
-
-        # 3. 填入下單欄
         self.order_toolbar_widget.set_symbol(code, latest_price)
 
-        # 4. 印出日誌
-        self.console_widget.log_info(f"切換看盤商品: {code} {self.current_name} (當前價: {latest_price:.2f})")
+        if self.engine.is_connected:
+            self.console_widget.log_info(f"切換看盤商品: {code} {self.current_name} (當前價: {latest_price:.2f})")
 
     def switch_ktype(self, ktype_code: str, ktype_name: str = ""):
         """8 大全週期切換邏輯 (1分, 5分, 15分, 30分, 60分, 日, 週, 月)"""
@@ -485,10 +488,11 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.lbl_stock_title.setText(f"{self.current_code} {self.current_name} — [{display_name} K 線圖]")
         kbars = self.engine.get_kbars(code=self.current_code, ktype=ktype_code)
         self.chart_widget.set_data(kbars)
-        self.console_widget.log_info(f"切換 K 線圖週期: {display_name}")
+        if self.engine.is_connected:
+            self.console_widget.log_info(f"切換 K 線圖週期: {display_name}")
 
     def on_hover_kbar(self, info: dict):
-        """游標懸停 K棒 即時動態高亮資訊 (含 MA5 / MA20 趨勢箭頭)"""
+        """游標懸停 K棒 即時動態高亮資訊"""
         color = "#FF3B69" if info['change'] >= 0 else "#00E676"
         sign = "+" if info['change'] >= 0 else ""
         
