@@ -165,7 +165,7 @@ class SinoPacEngine:
         return common_names.get(code, f"股票 {code}")
 
     def get_realtime_quotes(self, code_list: List[str] = None) -> List[Dict]:
-        """取得全真 Snapshots 快照報價 (未登入時回傳離線基礎結構，登入後回傳 Shioaji 全真快照)"""
+        """取得全真 Snapshots 快照報價 (100% 廢除所有寫死假數據 mock_info)"""
         if code_list is None:
             code_list = ["2330", "2317", "2454", "2308", "2382", "0050", "0056", "TX00"]
 
@@ -206,7 +206,7 @@ class SinoPacEngine:
             except Exception as e:
                 logging.warning(f"抓取全真 Snapshots 失敗: {e}")
 
-        # 未登入狀態：只填入商品標頭與名字，價格顯示 "--"
+        # 未登入狀態：價格顯示 "--"
         for code in code_list:
             results.append({
                 "code": code,
@@ -222,7 +222,7 @@ class SinoPacEngine:
     def _resample_dataframe(self, df: pd.DataFrame, ktype: str) -> pd.DataFrame:
         """
         Pandas 金融級 K 棒多週期重採樣引擎 (Resample Engine)
-        徹底消除 270 根 1分K 疊加產生的巨型紅色長方形色塊！
+        修正：週K、月K 時間戳記錄為該週/當月第一個交易日日期！
         """
         if df.empty:
             return df
@@ -240,7 +240,7 @@ class SinoPacEngine:
 
         ktype_upper = str(ktype).upper()
 
-        # 1. 判定是否為 日K (Day / 日 / 日K) ➔ 按交易日聚合成唯一的 1 根日 K 棒！
+        # 1. 日K (Day / 日 / 日K) ➔ 按交易日聚合成唯一的 1 根日 K 棒！
         if ktype in ["Day", "日", "日K", "DAY"]:
             grouped = df.groupby(df[ts_col].dt.date)
             res = pd.DataFrame({
@@ -253,31 +253,40 @@ class SinoPacEngine:
             })
             return res
 
-        # 2. 判定是否為 週K 或 月K
+        # 2. 週K (Week / 週) ➔ 取當週第一個交易日日期 (例如週一日期)！
         elif ktype in ["Week", "週", "週K", "WEEK"]:
-            df.set_index(ts_col, inplace=True)
-            res = df.resample('W').agg({
-                op_col: 'first',
-                hi_col: 'max',
-                lo_col: 'min',
-                cl_col: 'last',
-                vo_col: 'sum'
-            }).dropna().reset_index()
-            res.rename(columns={ts_col: 'ts', op_col: 'open', hi_col: 'high', lo_col: 'low', cl_col: 'close', vo_col: 'volume'}, inplace=True)
-            return res
-        elif ktype in ["Month", "月", "月K", "MONTH"]:
-            df.set_index(ts_col, inplace=True)
-            res = df.resample('ME').agg({
-                op_col: 'first',
-                hi_col: 'max',
-                lo_col: 'min',
-                cl_col: 'last',
-                vo_col: 'sum'
-            }).dropna().reset_index()
-            res.rename(columns={ts_col: 'ts', op_col: 'open', hi_col: 'high', lo_col: 'low', cl_col: 'close', vo_col: 'volume'}, inplace=True)
-            return res
+            # 使用 pd.Grouper 按 W-MON (每週一) 分組
+            grouped = df.groupby(pd.Grouper(key=ts_col, freq='W-MON'))
+            records = []
+            for name, group in grouped:
+                if not group.empty:
+                    records.append({
+                        'ts': group[ts_col].iloc[0], # 第一個交易日日期
+                        'open': group[op_col].iloc[0],
+                        'high': group[hi_col].max(),
+                        'low': group[lo_col].min(),
+                        'close': group[cl_col].iloc[-1],
+                        'volume': group[vo_col].sum()
+                    })
+            return pd.DataFrame(records)
 
-        # 3. 分鐘 K 棒重採樣 (5m, 15m, 30m, 60m)
+        # 3. 月K (Month / 月) ➔ 取當月第一個交易日日期 (例如月首第一個交易日)！
+        elif ktype in ["Month", "月", "月K", "MONTH"]:
+            grouped = df.groupby(pd.Grouper(key=ts_col, freq='MS'))
+            records = []
+            for name, group in grouped:
+                if not group.empty:
+                    records.append({
+                        'ts': group[ts_col].iloc[0], # 當月第一個交易日日期
+                        'open': group[op_col].iloc[0],
+                        'high': group[hi_col].max(),
+                        'low': group[lo_col].min(),
+                        'close': group[cl_col].iloc[-1],
+                        'volume': group[vo_col].sum()
+                    })
+            return pd.DataFrame(records)
+
+        # 4. 分鐘 K 棒重採樣 (5m, 15m, 30m, 60m)
         freq_map = {"5M": "5min", "5分": "5min", "15M": "15min", "15分": "15min", "30M": "30min", "30分": "30min", "60M": "60min", "60分": "60min"}
         freq = freq_map.get(ktype_upper)
         if freq:
@@ -292,28 +301,32 @@ class SinoPacEngine:
             res.rename(columns={ts_col: 'ts', op_col: 'open', hi_col: 'high', lo_col: 'low', cl_col: 'close', vo_col: 'volume'}, inplace=True)
             return res
 
-        # 4. 1分K 直接傳入重命名
+        # 5. 1分K 直接傳入重命名
         df.rename(columns={ts_col: 'ts', op_col: 'open', hi_col: 'high', lo_col: 'low', cl_col: 'close', vo_col: 'volume'}, inplace=True)
         return df
 
-    def get_kbars(self, code: str = "2330", ktype: str = "Day", limit: int = 750) -> List[Dict]:
+    def get_kbars(self, code: str = "2330", ktype: str = "Day", limit: int = 2500) -> List[Dict]:
         """
-        取得 8 大全週期 K 線歷史數據 (未登入時回傳空清單保持畫布空白，登入後回傳 Shioaji 3年全真實數據)
+        取得 8 大全週期 K 線歷史數據 (支援股票 10 年大數據與期貨 90 天 404 修復)
         """
         if not self.is_connected:
-            # 尚未登入 API 時：主圖保持乾淨空白，不畫任何模擬柱狀圖鬼樣子！
             return []
 
         contract = self.get_contract(code)
         if contract and self._safe_has_code(contract):
             try:
                 today = datetime.date.today()
-                
-                if ktype in ["Day", "日", "日K", "Week", "週", "Month", "月"]:
-                    start_date = (today - datetime.timedelta(days=1095)).strftime("%Y-%m-%d")
-                else:
-                    start_date = (today - datetime.timedelta(days=30)).strftime("%Y-%m-%d")
+                code_upper = code.upper()
+                is_futures = code_upper.startswith("TX") or code_upper.startswith("MX") or code_upper.startswith("TM") or "期" in code
 
+                # ★ 關鍵修復：期貨 Shioaji 查詢上限為 90 天 (解決 404 Data Not Found 警示) ★
+                if is_futures:
+                    days_back = 90 if ("m" in ktype or "分" in ktype) else 180
+                else:
+                    # 股票支援 10 年 (3650 天) 大數據下載！
+                    days_back = 3650 if ktype in ["Day", "日", "日K", "Week", "週", "Month", "月"] else 60
+
+                start_date = (today - datetime.timedelta(days=days_back)).strftime("%Y-%m-%d")
                 end_date = today.strftime("%Y-%m-%d")
 
                 kbars_raw = self.api.kbars(

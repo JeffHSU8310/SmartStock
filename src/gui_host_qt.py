@@ -32,10 +32,10 @@ except ImportError:
     from utils.config_manager import ConfigManager
 
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.18)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.19)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.18 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.19 (Pure Native Qt6)")
         self.resize(1520, 940)
 
         self.current_code = "2330"
@@ -43,6 +43,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.current_ktype = "日"
         self.current_ktype_code = "Day"
         self.period_buttons = {}
+        self.range_buttons = {}
 
         self.engine = SinoPacEngine()
         self.dll = self._load_cpp_dll()
@@ -185,7 +186,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         # 頂部 Header Banner
         header = QtWidgets.QHBoxLayout()
-        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.18 (Pure Native Qt6)")
+        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.19 (Pure Native Qt6)")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #00E5FF;")
         header.addWidget(title_label)
 
@@ -248,7 +249,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(8)
 
-        # K 線頂部列：商品標頭 + 8 大全週期按鈕列
+        # K 線頂部列：商品標頭 + 5大時間快選按鈕列 + 8 大全週期按鈕列
         kline_header = QtWidgets.QHBoxLayout()
         self.lbl_stock_title = QtWidgets.QLabel("2330 台積電 — [日 K 線圖]")
         self.lbl_stock_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #FFFFFF;")
@@ -256,7 +257,19 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         kline_header.addStretch()
 
-        # 8 大全週期按鈕列 ([1分] [5分] [15分] [30分] [60分] [日] [週] [月])
+        # 1. 5 大時間快選按鈕列 ([6個月] [1年] [2年] [5年] [10年])
+        range_periods = [
+            ("6個月", 6), ("1年", 12), ("2年", 24), ("5年", 60), ("10年", 120)
+        ]
+        for text, months in range_periods:
+            btn = QtWidgets.QPushButton(text)
+            btn.setStyleSheet("background-color: #1E222A; color: #00E5FF; font-weight: bold; border: 1px solid #2C323F; border-radius: 4px; padding: 4px 8px;")
+            btn.clicked.connect(lambda _, m=months: self.chart_widget.set_view_range_months(m))
+            kline_header.addWidget(btn)
+
+        kline_header.addWidget(QtWidgets.QLabel("|"))
+
+        # 2. 8 大全週期按鈕列 ([1分] [5分] [15分] [30分] [60分] [日] [週] [月])
         periods = [
             ("1分", "1m"), ("5分", "5m"), ("15分", "15m"), ("30分", "30m"),
             ("60分", "60m"), ("日", "Day"), ("週", "Week"), ("月", "Month")
@@ -270,12 +283,12 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         right_layout.addLayout(kline_header)
 
-        # 游標懸停 K 棒動態高亮資訊欄 (未登入時呈現溫馨指示)
+        # 游標懸停 K 棒動態高亮資訊欄 (完全對齊用戶截圖專業樣式)
         self.lbl_hover_info = QtWidgets.QLabel("💡 尚未連線 API：請點擊右上角「登入永豐金 API」開始載入全真行情與 K 線圖")
-        self.lbl_hover_info.setStyleSheet("background-color: #16191E; color: #FFD700; padding: 6px 10px; border-radius: 4px; font-weight: bold; font-size: 12px;")
+        self.lbl_hover_info.setStyleSheet("background-color: #16191E; color: #FFD700; padding: 6px 10px; border-radius: 4px; font-weight: bold; font-size: 13px;")
         right_layout.addWidget(self.lbl_hover_info)
 
-        # 版面2: 主圖區 (K線圖, 占比最大) & 副圖區 (技術指標)
+        # 版面2: 3層圖表區 (主圖, 副圖一Volume, 副圖二MACD)
         self.chart_widget = NativeCandlestickChart()
         self.chart_widget.hover_kbar_signal.connect(self.on_hover_kbar)
         right_layout.addWidget(self.chart_widget, stretch=7)
@@ -395,7 +408,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
                     self.btn_auth_status.setText("🔴 永豐金實盤 (點擊登出)")
                     self.btn_auth_status.setStyleSheet("background-color: #1A3326; color: #00E676; border: 1px solid #00E676; padding: 6px 16px; border-radius: 14px; font-weight: bold;")
                     self.console_widget.log_success("永豐金 API 實盤連線與 CA 憑證激活成功！已開啓全真快照報價。")
-                    self.lbl_hover_info.setText("💡 移至 K 線可即時檢視該棒詳細價格、漲跌點數、均線趨勢與成交量")
+                    self.lbl_hover_info.setText("💡 移至 K 線可即時檢視該棒詳細價格、漲跌點數、均線與 MACD 指標")
                     QtWidgets.QMessageBox.information(self, "登入成功", res["message"])
                     self.refresh_realtime_quotes()
                     self.on_stock_changed(self.current_code, self.current_name)
@@ -492,19 +505,17 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
             self.console_widget.log_info(f"切換 K 線圖週期: {display_name}")
 
     def on_hover_kbar(self, info: dict):
-        """游標懸停 K棒 即時動態高亮資訊"""
+        """游標懸停 K棒 即時動態高亮資訊 (完全對齊用戶截圖樣式)"""
         color = "#FF3B69" if info['change'] >= 0 else "#00E676"
+        arrow = "▲" if info['change'] >= 0 else "▼"
         sign = "+" if info['change'] >= 0 else ""
-        
-        ma5_str = f"MA5: {info['ma5']:.2f} {info['ma5_arrow']}" if info.get('ma5') else "MA5: --"
-        ma20_str = f"MA20: {info['ma20']:.2f} {info['ma20_arrow']}" if info.get('ma20') else "MA20: --"
 
         text = (
-            f"📅 {info['datetime']} | "
+            f"<span style='color:#00E5FF; font-weight:bold;'>{self.current_code} {self.current_name}</span> | "
+            f"時間: {info['datetime']} | "
             f"開: {info['open']:.2f} | 高: {info['high']:.2f} | 低: {info['low']:.2f} | 收: {info['close']:.2f} | "
-            f"漲跌: <span style='color:{color}; font-weight:bold;'>{sign}{info['change']:.2f} ({sign}{info['pct_change']:.2f}%)</span> | "
-            f"<span style='color:#FFD700;'>{ma5_str}</span> | <span style='color:#E040FB;'>{ma20_str}</span> | "
-            f"成交量: {info['volume']:,} 張"
+            f"漲跌: <span style='color:{color}; font-weight:bold;'>{arrow} {abs(info['change']):.2f} ({arrow} {abs(info['pct_change']):.2f}%)</span> | "
+            f"量: {info['volume']:,} 張"
         )
         self.lbl_hover_info.setText(text)
 
