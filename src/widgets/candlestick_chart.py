@@ -4,7 +4,7 @@ import numpy as np
 from typing import List, Dict
 
 class DateAxisItem(pg.AxisItem):
-    """自訂時間軸 (DateAxisItem: 格式化 X 軸顯示日期時間如 2026-07-31 或 10:30) (圖片 4 需求)"""
+    """自訂時間軸 (DateAxisItem: 格式化 X 軸顯示日期時間如 2026-07-31 或 10:30)"""
     def __init__(self, dates: List[str], *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.dates = dates
@@ -20,7 +20,7 @@ class DateAxisItem(pg.AxisItem):
         return strings
 
 class CandlestickItem(pg.GraphicsObject):
-    """pyqtgraph 原生紅綠 K 棒 (修復 open == close 橫線厚度與影線)"""
+    """pyqtgraph 原生紅綠 K 棒 (徹底還原標準漲停一字線與實體 K 棒)"""
     def __init__(self, data):
         pg.GraphicsObject.__init__(self)
         self.data = data
@@ -35,7 +35,7 @@ class CandlestickItem(pg.GraphicsObject):
         pen_green = pg.mkPen('#00E676', width=1.5)
         brush_green = pg.mkBrush('#00E676')
 
-        w = 0.35
+        w = 0.30
         for t, open_p, close_p, low_p, high_p in self.data:
             if close_p >= open_p:
                 p.setPen(pen_red)
@@ -44,15 +44,17 @@ class CandlestickItem(pg.GraphicsObject):
                 p.setPen(pen_green)
                 p.setBrush(brush_green)
 
-            # 畫上下影線
+            # 1. 畫上下影線 (High to Low)
             p.drawLine(QtCore.QPointF(t, low_p), QtCore.QPointF(t, high_p))
 
-            # 修復一字線/十字線 (open == close) 實體厚度
+            # 2. 畫 K 棒實體 (Open to Close)
             height = close_p - open_p
-            if abs(height) < 0.05:
-                height = 0.25 if close_p >= open_p else -0.25
-
-            p.drawRect(QtCore.QRectF(t - w, open_p, w * 2, height))
+            # 徹底廢除 height = 0.25 硬拉高度代碼！當 open == close 時畫橫向一字線 (一)
+            if abs(height) < 1e-5:
+                # 漲停一字線 / 十字線 / 平盤一字線：畫一條橫平的線 (一)
+                p.drawLine(QtCore.QPointF(t - w, open_p), QtCore.QPointF(t + w, open_p))
+            else:
+                p.drawRect(QtCore.QRectF(t - w, open_p, w * 2, height))
 
         p.end()
 
@@ -109,7 +111,7 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.win.scene().sigMouseMoved.connect(self.on_mouse_moved)
 
     def set_data(self, kbars: List[Dict]):
-        """切換商品時 100% 重置數據、DateAxisItem 與 Y 軸 AutoRange (徹底修復切換商品大叉叉空白問題)"""
+        """切換商品時 100% 重置數據、DateAxisItem 與 Y 軸 AutoRange"""
         self.kbars_data = []
         self.dates = []
         self.ma5_vals = []
@@ -150,79 +152,71 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         item = CandlestickItem(chart_data)
         self.p1.addItem(item)
 
-        # 2. 計算 MA5 (黃) 與 MA20 (紫) 並傳遞趨勢箭頭
-        closes_arr = np.array(closes)
+        # 2. 計算 MA5 與 MA20 技術指標 (使用 np.nan 替代 None 以完全符合 pyqtgraph 要求)
+        closes_arr = np.array(closes, dtype=float)
         if len(closes_arr) >= 5:
-            self.ma5_vals = np.convolve(closes_arr, np.ones(5)/5, mode='valid').tolist()
-            self.p1.plot(np.arange(4, len(closes_arr)), self.ma5_vals, pen=pg.mkPen('#FFD700', width=1.5), name='MA5')
+            ma5 = np.convolve(closes_arr, np.ones(5)/5, mode='valid')
+            self.ma5_vals = [np.nan]*4 + list(ma5)
+            self.p1.plot(self.ma5_vals, pen=pg.mkPen('#FFD700', width=1.5), name='MA5')
+
         if len(closes_arr) >= 20:
-            self.ma20_vals = np.convolve(closes_arr, np.ones(20)/20, mode='valid').tolist()
-            self.p1.plot(np.arange(19, len(closes_arr)), self.ma20_vals, pen=pg.mkPen('#E040FB', width=1.5), name='MA20')
+            ma20 = np.convolve(closes_arr, np.ones(20)/20, mode='valid')
+            self.ma20_vals = [np.nan]*19 + list(ma20)
+            self.p1.plot(self.ma20_vals, pen=pg.mkPen('#E040FB', width=1.5), name='MA20')
 
-        # 3. 畫成交量柱狀圖 (Volume Bar)
-        x_indices = np.arange(len(volumes))
-        colors = ['#FF3B69' if kb['close'] >= kb['open'] else '#00E676' for kb in kbars]
-        bargraph = pg.BarGraphItem(x=x_indices, height=volumes, width=0.6, brushes=colors, pens=colors)
-        self.p2.addItem(bargraph)
+        # 3. 畫成交量副圖 (柱狀圖)
+        v_colors = ['#FF3B69' if c >= o else '#00E676' for o, c in zip([k['open'] for k in kbars], closes)]
+        vol_bars = pg.BarGraphItem(x=list(range(len(kbars))), height=volumes, width=0.6, brushes=v_colors)
+        self.p2.addItem(vol_bars)
 
-        # ★★★ 核心關鍵修正：強制 Y 軸與 ViewBox 針對新商品 Price Range 進行 AutoRange 自動重置 ★★★
+        # 4. 重置 Y 軸 AutoRange 讓畫面 100% 適應當前價格刻度
         self.p1.enableAutoRange(axis='y', enable=True)
         self.p1.autoRange()
         self.p2.enableAutoRange(axis='y', enable=True)
         self.p2.autoRange()
 
-        # 切換商品瞬間，廣播最後一筆 K 棒資訊
-        if self.kbars_data:
-            self.emit_hover_info(len(self.kbars_data) - 1)
-
     def on_mouse_moved(self, pos):
+        """游標懸停事件處理：更新十字線位置並發送 Hover K棒 詳細資訊"""
         if not self.kbars_data:
             return
 
-        mousePoint = self.p1.vb.mapSceneToView(pos)
-        idx = int(round(mousePoint.x()))
+        mouse_point = self.p1.vb.mapSceneToView(pos)
+        idx = int(round(mouse_point.x()))
 
         if 0 <= idx < len(self.kbars_data):
-            self.vLine.setPos(mousePoint.x())
-            self.hLine.setPos(mousePoint.y())
-            self.emit_hover_info(idx)
+            self.vLine.setPos(mouse_point.x())
+            self.hLine.setPos(mouse_point.y())
 
-    def emit_hover_info(self, idx: int):
-        if 0 <= idx < len(self.kbars_data):
             kb = self.kbars_data[idx]
-            prev_close = self.kbars_data[idx - 1]['close'] if idx > 0 else kb['open']
-            change = kb['close'] - prev_close
-            pct_change = (change / prev_close * 100.0) if prev_close != 0 else 0.0
+            open_p = kb['open']
+            close_p = kb['close']
+            high_p = kb['high']
+            low_p = kb['low']
+            vol = kb['volume']
+            change = close_p - open_p
+            pct_change = (change / open_p * 100.0) if open_p != 0 else 0.0
 
-            ma5_val = None
+            ma5_val = self.ma5_vals[idx] if idx < len(self.ma5_vals) and not np.isnan(self.ma5_vals[idx]) else None
+            ma20_val = self.ma20_vals[idx] if idx < len(self.ma20_vals) and not np.isnan(self.ma20_vals[idx]) else None
+
+            # 計算 MA 趨勢箭頭
             ma5_arrow = "➡️"
-            ma5_idx = idx - 4
-            if 0 <= ma5_idx < len(self.ma5_vals):
-                ma5_val = self.ma5_vals[ma5_idx]
-                if ma5_idx > 0:
-                    prev_ma5 = self.ma5_vals[ma5_idx - 1]
-                    if ma5_val > prev_ma5: ma5_arrow = "⬆️"
-                    elif ma5_val < prev_ma5: ma5_arrow = "⬇️"
+            if idx > 0 and ma5_val and self.ma5_vals[idx-1] and not np.isnan(self.ma5_vals[idx-1]):
+                ma5_arrow = "⬆️" if ma5_val > self.ma5_vals[idx-1] else ("⬇️" if ma5_val < self.ma5_vals[idx-1] else "➡️")
 
-            ma20_val = None
             ma20_arrow = "➡️"
-            ma20_idx = idx - 19
-            if 0 <= ma20_idx < len(self.ma20_vals):
-                ma20_val = self.ma20_vals[ma20_idx]
-                if ma20_idx > 0:
-                    prev_ma20 = self.ma20_vals[ma20_idx - 1]
-                    if ma20_val > prev_ma20: ma20_arrow = "⬆️"
-                    elif ma20_val < prev_ma20: ma20_arrow = "⬇️"
+            if idx > 0 and ma20_val and self.ma20_vals[idx-1] and not np.isnan(self.ma20_vals[idx-1]):
+                ma20_arrow = "⬆️" if ma20_val > self.ma20_vals[idx-1] else ("⬇️" if ma20_val < self.ma20_vals[idx-1] else "➡️")
 
             info = {
                 "datetime": kb['datetime'],
-                "open": kb['open'],
-                "high": kb['high'],
-                "low": kb['low'],
-                "close": kb['close'],
+                "open": open_p,
+                "high": high_p,
+                "low": low_p,
+                "close": close_p,
                 "change": change,
                 "pct_change": pct_change,
-                "volume": kb['volume'],
+                "volume": vol,
                 "ma5": ma5_val,
                 "ma5_arrow": ma5_arrow,
                 "ma20": ma20_val,
