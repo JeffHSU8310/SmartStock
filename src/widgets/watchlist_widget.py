@@ -112,8 +112,28 @@ class WatchlistWidget(QtWidgets.QWidget):
         layout.addLayout(btn_box)
 
     def _setup_group_menu(self):
-        """配置⚙️群組管理彈出菜單 (新增/修改名稱/刪除)"""
+        """配置⚙️群組管理彈出菜單 (暗黑底亮白字，淺底純黑字貫徹鐵律)"""
         menu = QtWidgets.QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #1E222A;
+                color: #FFFFFF;
+                border: 1px solid #2C323F;
+                border-radius: 6px;
+                padding: 4px;
+            }
+            QMenu::item {
+                background-color: transparent;
+                color: #FFFFFF;
+                padding: 8px 24px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QMenu::item:selected {
+                background-color: #0066FF;
+                color: #FFFFFF;
+            }
+        """)
         
         act_add = menu.addAction("➕ 新增群組...")
         act_add.triggered.connect(self.create_new_group)

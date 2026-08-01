@@ -32,10 +32,10 @@ except ImportError:
     from utils.config_manager import ConfigManager
 
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.25)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.26)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.25 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.26 (Pure Native Qt6)")
         self.resize(1520, 940)
 
         self.current_code = "2330"
@@ -77,6 +77,45 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
             color: #E0E6ED;
             font-family: "Microsoft JhengHei", "Segoe UI", sans-serif;
             font-size: 13px;
+        }
+        /* 貫徹鐵律：任何淺色/白色背景元件，字體一律強制使用純黑色 (#000000) */
+        QMenu {
+            background-color: #1E222A;
+            color: #FFFFFF;
+            border: 1px solid #2C323F;
+            border-radius: 6px;
+            padding: 4px;
+        }
+        QMenu::item {
+            background-color: transparent;
+            color: #FFFFFF;
+            padding: 8px 24px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        QMenu::item:selected {
+            background-color: #0066FF;
+            color: #FFFFFF;
+        }
+        QMenu::item:disabled {
+            color: #5C6370;
+        }
+        QInputDialog {
+            background-color: #16191E;
+            color: #FFFFFF;
+        }
+        QInputDialog QLabel {
+            color: #FFFFFF;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        QInputDialog QLineEdit {
+            background-color: #1E222A;
+            color: #FFFFFF;
+            border: 1px solid #0066FF;
+            border-radius: 4px;
+            padding: 6px;
+            font-size: 14px;
         }
         QMessageBox {
             background-color: #16191E;
