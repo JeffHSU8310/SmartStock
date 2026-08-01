@@ -131,7 +131,7 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.win.scene().sigMouseMoved.connect(self.on_mouse_moved)
 
     def set_data(self, kbars: List[Dict]):
-        """切換商品時 100% 重置數據、DateAxisItem 與 3 層圖表」"""
+        """切換商品時 100% 徹底清空重置數據、DateAxisItem 與 3 層圖表」"""
         self.kbars_data = []
         self.dates = []
         self.ma5_vals = []
@@ -142,18 +142,16 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.dea_vals = []
         self.macd_bars = []
 
+        # 1. 徹底清空 3 大圖表畫布 (徹底消滅對角斜線殘影與舊成交量)
+        self.p1.clear()
+        self.p2.clear()
+        self.p3.clear()
+
         if not kbars:
-            self.p1.clear()
-            self.p2.clear()
-            self.p3.clear()
             return
 
         self.kbars_data = kbars
         self.dates = [kb['datetime'] for kb in kbars]
-
-        self.p1.clear()
-        self.p2.clear()
-        self.p3.clear()
 
         # 重建時間軸 DateAxisItem
         axis_p1 = DateAxisItem(self.dates, orientation='bottom')
@@ -205,9 +203,9 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             self.ma120_vals = [np.nan]*119 + list(ma120)
             self.p1.plot(self.ma120_vals, pen=pg.mkPen('#E040FB', width=1.5), name='MA120')
 
-        # 3. 畫副圖一成交量柱狀圖
+        # 3. ★ 畫副圖一成交量柱狀圖 (固定 y0=0 起算，徹底解決塞滿滿的混亂問題!) ★
         v_colors = ['#FF3B69' if c >= o else '#00E676' for o, c in zip([k['open'] for k in kbars], closes)]
-        vol_bars = pg.BarGraphItem(x=list(range(len(kbars))), height=volumes, width=0.5, brushes=v_colors)
+        vol_bars = pg.BarGraphItem(x=list(range(len(kbars))), height=volumes, y0=0, width=0.5, brushes=v_colors)
         self.p2.addItem(vol_bars)
 
         # 4. 計算並繪製副圖二 MACD 指標 (EMA12, EMA26, DIF, DEA, MACD Bar)
@@ -227,30 +225,29 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             self.p3.plot(self.dif_vals, pen=pg.mkPen('#00E5FF', width=1.5), name='DIF')
             self.p3.plot(self.dea_vals, pen=pg.mkPen('#FF9800', width=1.5), name='DEA')
 
-            # 畫 MACD 柱狀圖 (正值紅柱、負值綠柱)
+            # 畫 MACD 柱狀圖 (正值紅柱、負值綠柱，固定 y0=0)
             m_colors = ['#FF3B69' if v >= 0 else '#00E676' for v in macd_bar]
-            m_bars = pg.BarGraphItem(x=list(range(len(kbars))), height=macd_bar, width=0.5, brushes=m_colors)
+            m_bars = pg.BarGraphItem(x=list(range(len(kbars))), height=macd_bar, y0=0, width=0.5, brushes=m_colors)
             self.p3.addItem(m_bars)
 
         # 5. 預設主圖視野精準縮放至近 6 個月預設 (顯示 30 根精選大寬度 K 棒)
         self.set_view_range_months(6)
 
     def set_view_range_months(self, months: int):
-        """★ 修正時間快選按鈕：縮放 X 軸並針對可視區域自適應 Y 軸 (100% 生效修復) ★"""
+        """★ 修正時間快選按鈕：縮放 X 軸並針對可視區域自適應 Y 軸 (固定 Volume 自 0 起算!) ★"""
         if not self.kbars_data:
             return
         
         total_cnt = len(self.kbars_data)
-        # 對應各月數要顯示的 K 棒數量 (6個月: 30根, 1年: 60根, 2年: 120根, 5年: 300根, 10年: 600根)
         bars_map = {6: 30, 12: 60, 24: 120, 60: 300, 120: 600}
         bars_count = bars_map.get(months, 30)
 
         start_idx = max(0, total_cnt - bars_count)
         
-        # 1. 100% 精準設定 X 軸縮放視角 (不再調用覆蓋 X 軸的 autoRange!)
+        # 1. 100% 精準設定 X 軸縮放視角
         self.p1.setXRange(start_idx, total_cnt, padding=0.01)
 
-        # 2. 自動針對目前畫面可視之 K 棒最高最低價縮放 Y 軸，視野極佳
+        # 2. 主圖：自動針對目前畫面可視之 K 棒最高最低價縮放 Y 軸
         visible_kbars = self.kbars_data[start_idx:total_cnt]
         if visible_kbars:
             lows = [k['low'] for k in visible_kbars]
@@ -258,6 +255,11 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             min_y, max_y = min(lows), max(highs)
             padding_y = (max_y - min_y) * 0.05 if max_y != min_y else 10.0
             self.p1.setYRange(min_y - padding_y, max_y + padding_y, padding=0)
+
+            # 3. ★ 成交量副圖：固定 Y 軸從 0 開始到當前視角最大成交量的 1.1 倍 (完美乾淨!) ★
+            vols = [k['volume'] for k in visible_kbars]
+            max_v = max(vols) if vols else 1000
+            self.p2.setYRange(0, max_v * 1.1, padding=0)
 
     def on_mouse_moved(self, pos):
         """游標懸停處理：X 軸精準吸附至 K 棒正中央 round(mouse_x)"""
