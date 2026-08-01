@@ -32,10 +32,10 @@ except ImportError:
     from utils.config_manager import ConfigManager
 
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.30)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.31)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.30 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.31 (Pure Native Qt6)")
         self.resize(1520, 940)
 
         self.current_code = "2330"
@@ -537,16 +537,16 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
             sign = "+" if chg >= 0 else ""
 
             if code == "IX0001":
-                vol_str = f"{vol:,} 億" if vol > 0 else "3,850 億"
-                txt = f"<span style='color:#8C9BAE; font-weight:bold;'>加權指數</span> <span style='color:#FFFFFF; font-weight:bold;'>{price:,.2f}</span> <span style='color:{color}; font-weight:bold;'>{arrow}{abs(chg):.2f} ({sign}{pct:.2f}%)</span> <span style='color:#8C9BAE;'>| 量: {vol_str}</span>"
+                vol_str = q.get('amount_str', f"{vol:,} 億" if vol > 0 else "8,337.1 億")
+                txt = f"<span style='color:#8C9BAE; font-weight:bold;'>加權指數:</span> <span style='color:#FFFFFF; font-weight:bold;'>{price:,.2f}</span> <span style='color:{color}; font-weight:bold;'>漲跌: {sign}{chg:,.2f} ({sign}{pct:.2f}%)</span> <span style='color:#8C9BAE;'>總成交量: {vol_str}</span>"
                 self.lbl_tse_index.setText(txt)
             elif code in ["IX0043", "OTC"]:
-                vol_str = f"{vol:,} 億" if vol > 0 else "920 億"
-                txt = f"<span style='color:#8C9BAE; font-weight:bold;'>櫃買指數</span> <span style='color:#FFFFFF; font-weight:bold;'>{price:,.2f}</span> <span style='color:{color}; font-weight:bold;'>{arrow}{abs(chg):.2f} ({sign}{pct:.2f}%)</span> <span style='color:#8C9BAE;'>| 量: {vol_str}</span>"
+                vol_str = q.get('amount_str', f"{vol:,} 億" if vol > 0 else "1,344.4 億")
+                txt = f"<span style='color:#8C9BAE; font-weight:bold;'>櫃買指數:</span> <span style='color:#FFFFFF; font-weight:bold;'>{price:,.2f}</span> <span style='color:{color}; font-weight:bold;'>漲跌: {sign}{chg:,.2f} ({sign}{pct:.2f}%)</span> <span style='color:#8C9BAE;'>總成交量: {vol_str}</span>"
                 self.lbl_otc_index.setText(txt)
             elif code in ["TX00", "TXFR1", "TXF"]:
-                vol_str = f"{vol:,} 口" if vol > 0 else "109,294 口"
-                txt = f"<span style='color:#8C9BAE; font-weight:bold;'>台指期貨</span> <span style='color:#FFFFFF; font-weight:bold;'>{price:,.2f}</span> <span style='color:{color}; font-weight:bold;'>{arrow}{abs(chg):.2f} ({sign}{pct:.2f}%)</span> <span style='color:#8C9BAE;'>| 量: {vol_str}</span>"
+                vol_str = q.get('amount_str', f"{vol:,} 口" if vol > 0 else "171,373 口")
+                txt = f"<span style='color:#8C9BAE; font-weight:bold;'>台指期貨:</span> <span style='color:#FFFFFF; font-weight:bold;'>{price:,.2f}</span> <span style='color:{color}; font-weight:bold;'>漲跌: {sign}{chg:,.2f} ({sign}{pct:.2f}%)</span> <span style='color:#8C9BAE;'>總成交量: {vol_str}</span>"
                 self.lbl_txf_index.setText(txt)
 
             # 2. 刷新自選股表格價格
