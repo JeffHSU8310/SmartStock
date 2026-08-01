@@ -1,7 +1,6 @@
 import sys
 import os
 
-# 自動將專案根目錄加入 sys.path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(current_dir)
 if root_dir not in sys.path:
@@ -65,15 +64,15 @@ class CXXBacktestResult(ctypes.Structure):
     ]
 
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.5)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.6)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.5 (Pure Native Qt6)")
-        self.resize(1480, 920)
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.6 (Pure Native Qt6)")
+        self.resize(1520, 940)
 
         self.current_code = "2330"
         self.current_name = "台積電"
-        self.current_ktype = "Day"
+        self.current_ktype = "日"
 
         self.engine = SinoPacEngine()
         self.dll = self._load_cpp_dll()
@@ -97,7 +96,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         return None
 
     def _setup_qss_style(self):
-        """極致暗黑高科技 QSS 主題樣式 (圖片 1 QMessageBox 高對比白字對比度修復)"""
+        """極致暗黑高科技 QSS 主題樣式 (圖片 5 QSS 下拉選單顏色高對比修復)"""
         qss = """
         QMainWindow {
             background-color: #121418;
@@ -107,7 +106,6 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
             font-family: "Microsoft JhengHei", "Segoe UI", sans-serif;
             font-size: 13px;
         }
-        /* 圖片 1 提示彈窗文字高對比度修復 */
         QMessageBox {
             background-color: #16191E;
             color: #FFFFFF;
@@ -124,6 +122,24 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
             border-radius: 4px;
             padding: 6px 16px;
             min-width: 60px;
+        }
+        /* 圖片 5 下拉選單 QSS 顏色高對比修復 (黑底白字與選中高亮) */
+        QComboBox {
+            background-color: #1E222A;
+            border: 1px solid #2C323F;
+            border-radius: 6px;
+            padding: 6px 10px;
+            color: #FFFFFF;
+            font-weight: bold;
+        }
+        QComboBox QAbstractItemView {
+            background-color: #16191E;
+            color: #FFFFFF;
+            border: 1px solid #2C323F;
+            selection-background-color: #0066FF;
+            selection-color: #FFFFFF;
+            outline: 0px;
+            padding: 4px;
         }
         QTabWidget::pane {
             border: 1px solid #232730;
@@ -177,13 +193,6 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
             padding: 6px 10px;
             color: #FFFFFF;
         }
-        QComboBox {
-            background-color: #1E222A;
-            border: 1px solid #2C323F;
-            border-radius: 6px;
-            padding: 6px 10px;
-            color: #FFFFFF;
-        }
         QGroupBox {
             border: 1px solid #232730;
             border-radius: 8px;
@@ -207,13 +216,12 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         # 頂部 Header Banner
         header = QtWidgets.QHBoxLayout()
-        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.5 (Pure Native Qt6)")
+        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.6 (Pure Native Qt6)")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #00E5FF;")
         header.addWidget(title_label)
 
         header.addStretch()
 
-        # 圖片 2 修正：右上角登入/登出動態按鈕 (點擊觸發 Auth Modal)
         self.btn_auth_status = QtWidgets.QPushButton("🔐 登入永豐金 API (含憑證)")
         self.btn_auth_status.setStyleSheet("background-color: #0066FF; color: #FFFFFF; padding: 6px 16px; border-radius: 14px; font-weight: bold;")
         self.btn_auth_status.clicked.connect(self.on_auth_status_clicked)
@@ -221,7 +229,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         main_layout.addLayout(header)
 
-        # 主要頁籤 (圖片 3 修正：精簡為 3 大核心分頁)
+        # 主要 3 大頁籤
         self.tabs = QtWidgets.QTabWidget()
         main_layout.addWidget(self.tabs)
 
@@ -237,13 +245,12 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
 
-        # 左側資訊欄 (自選股 + 五檔 + 快捷下單欄)
+        # 左側資訊欄 (自選股 + 五檔 + 下單欄)
         left_widget = QtWidgets.QWidget()
         left_layout = QtWidgets.QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(10)
 
-        # (1) 版面1: 自選股清單
         box_watchlist = QtWidgets.QGroupBox("📌 1. 自選股清單 (管理與切換)")
         l_wl = QtWidgets.QVBoxLayout(box_watchlist)
         self.watchlist_widget = WatchlistWidget()
@@ -251,14 +258,12 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         l_wl.addWidget(self.watchlist_widget)
         left_layout.addWidget(box_watchlist, stretch=4)
 
-        # (3) 版面3: 五檔即時報價欄
         box_fivebids = QtWidgets.QGroupBox("📊 3. 即時五檔委買 / 委賣報價欄")
         l_fb = QtWidgets.QVBoxLayout(box_fivebids)
         self.five_bids_widget = FiveBidsWidget()
         l_fb.addWidget(self.five_bids_widget)
         left_layout.addWidget(box_fivebids, stretch=3)
 
-        # (4) 版面4: 快捷下單工具欄 (圖片 3 修正: 包含實盤/模擬帳戶選擇)
         box_order = QtWidgets.QGroupBox("⚡ 4. 快捷下單工具欄 (含帳戶選擇)")
         l_ot = QtWidgets.QVBoxLayout(box_order)
         self.order_toolbar_widget = OrderToolbarWidget()
@@ -274,29 +279,37 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(8)
 
+        # K 線頂部列：商品標頭 + 8 大全週期按鈕列 (圖片 2 需求實作)
         kline_header = QtWidgets.QHBoxLayout()
         self.lbl_stock_title = QtWidgets.QLabel("2330 台積電 — [日 K 線圖]")
         self.lbl_stock_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #FFFFFF;")
         kline_header.addWidget(self.lbl_stock_title)
 
         kline_header.addStretch()
-        btn_day = QtWidgets.QPushButton("日K")
-        btn_day.clicked.connect(lambda: self.switch_ktype("Day"))
-        btn_60m = QtWidgets.QPushButton("60分K")
-        btn_60m.clicked.connect(lambda: self.switch_ktype("60m"))
-        btn_5m = QtWidgets.QPushButton("5分K")
-        btn_5m.clicked.connect(lambda: self.switch_ktype("5m"))
-        btn_1m = QtWidgets.QPushButton("1分K")
-        btn_1m.clicked.connect(lambda: self.switch_ktype("1m"))
 
-        kline_header.addWidget(btn_day)
-        kline_header.addWidget(btn_60m)
-        kline_header.addWidget(btn_5m)
-        kline_header.addWidget(btn_1m)
+        # 圖片 2 需求：8 大全週期按鈕列 ([1分] [5分] [15分] [30分] [60分] [日] [週] [月])
+        periods = [
+            ("1分", "1m"), ("5分", "5m"), ("15分", "15m"), ("30分", "30m"),
+            ("60分", "60m"), ("日", "Day"), ("週", "Week"), ("月", "Month")
+        ]
+
+        btn_style = "background-color: #1E222A; color: #00E5FF; padding: 4px 10px; font-weight: bold; border-radius: 4px;"
+        for text, code in periods:
+            btn = QtWidgets.QPushButton(text)
+            btn.setStyleSheet(btn_style)
+            btn.clicked.connect(lambda _, c=code, t=text: self.switch_ktype(c, t))
+            kline_header.addWidget(btn)
+
         right_layout.addLayout(kline_header)
+
+        # 圖片 3 需求：游標懸停 K 棒動態高亮資訊欄
+        self.lbl_hover_info = QtWidgets.QLabel("💡 移至 K 線可即時檢視該棒詳細價格、漲跌點數、漲跌幅與成交量")
+        self.lbl_hover_info.setStyleSheet("background-color: #16191E; color: #FFD700; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px;")
+        right_layout.addWidget(self.lbl_hover_info)
 
         # (2-A & 2-B) 版面2: 主圖區 (K線圖, 占比最大) & 副圖區 (技術指標)
         self.chart_widget = NativeCandlestickChart()
+        self.chart_widget.hover_kbar_signal.connect(self.on_hover_kbar)
         right_layout.addWidget(self.chart_widget, stretch=7)
 
         # (5) 版面5: 訊息欄 (位於副圖正下方)
@@ -389,9 +402,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         return frame
 
     def on_auth_status_clicked(self):
-        """圖片 2 修正：右上角登入 / 登出點擊邏輯 (觸發 Modal 與一鍵登出)"""
         if not self.engine.is_connected:
-            # 觸發 AuthDialog Modal
             dialog = AuthDialog(self)
             if dialog.exec() == QtWidgets.QDialog.Accepted and dialog.auth_data:
                 d = dialog.auth_data
@@ -411,7 +422,6 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
                 else:
                     QtWidgets.QMessageBox.warning(self, "登入失敗", res["message"])
         else:
-            # 已登入狀態 ➔ 點擊登出
             reply = QtWidgets.QMessageBox.question(
                 self, "確認登出", "您確定要登出永豐金證券 Shioaji API 實盤帳戶嗎？",
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
@@ -424,7 +434,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.information(self, "登出成功", "您已成功登出永豐金 API！")
 
     def _setup_quote_timer(self):
-        """設置定時器，每 3 秒自動更新即時報價與五檔"""
+        """設置定時器，每 3 秒自動刷新實時行情快照與五檔報價"""
         self.quote_timer = QtCore.QTimer(self)
         self.quote_timer.timeout.connect(self.refresh_realtime_quotes)
         self.quote_timer.start(3000)
@@ -440,7 +450,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.on_stock_changed("2330", "台積電")
 
     def on_stock_changed(self, code: str, name: str):
-        """追加需求修復：自選股點擊連動！刷新全真 K 線圖、五檔報價與下單金額"""
+        """自選股點擊連動：刷新 8 大全週期 K 線圖、五檔報價與下單金額"""
         self.current_code = code
         self.current_name = name
 
@@ -460,12 +470,26 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         # 4. 印出日誌
         self.console_widget.log_info(f"切換看盤商品: {code} {name} (當前真實價: {latest_price:.2f})")
 
-    def switch_ktype(self, ktype: str):
-        self.current_ktype = ktype
-        self.lbl_stock_title.setText(f"{self.current_code} {self.current_name} — [{ktype} K 線圖]")
-        kbars = self.engine.get_kbars(code=self.current_code, ktype=ktype)
+    def switch_ktype(self, ktype_code: str, ktype_name: str = ""):
+        """8 大全週期切換邏輯 (1分, 5分, 15分, 30分, 60分, 日, 週, 月)"""
+        display_name = ktype_name if ktype_name else ktype_code
+        self.current_ktype = display_name
+        self.lbl_stock_title.setText(f"{self.current_code} {self.current_name} — [{display_name} K 線圖]")
+        kbars = self.engine.get_kbars(code=self.current_code, ktype=ktype_code)
         self.chart_widget.set_data(kbars)
-        self.console_widget.log_info(f"切換 K 線圖週期: {ktype}")
+        self.console_widget.log_info(f"切換 K 線圖週期: {display_name}")
+
+    def on_hover_kbar(self, info: dict):
+        """游標懸停 K棒 即時動態高亮資訊 (圖片 3 需求實作)"""
+        color = "#FF3B69" if info['change'] >= 0 else "#00E676"
+        sign = "+" if info['change'] >= 0 else ""
+        text = (
+            f"📅 {info['datetime']} | "
+            f"開: {info['open']:.2f} | 高: {info['high']:.2f} | 低: {info['low']:.2f} | 收: {info['close']:.2f} | "
+            f"漲跌: <span style='color:{color}; font-weight:bold;'>{sign}{info['change']:.2f} ({sign}{info['pct_change']:.2f}%)</span> | "
+            f"成交量: {info['volume']:,} 張"
+        )
+        self.lbl_hover_info.setText(text)
 
     def on_order_submitted(self, order: dict):
         self.console_widget.log_success(
