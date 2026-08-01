@@ -39,7 +39,14 @@ class SinoPacEngine:
             )
             self.is_connected = True
 
-            # 2. 激活 CA 憑證 (Rule 14 實作)
+            # 2. 獲取並載入實體商品合約字典
+            try:
+                self.api.fetch_contracts()
+                logging.info("Shioaji 官方商品字典 fetch_contracts 載入成功！")
+            except Exception as fc_err:
+                logging.warning(f"fetch_contracts 警示: {fc_err}")
+
+            # 3. 激活 CA 憑證 (Rule 14 實作)
             if ca_path and os.path.exists(ca_path) and ca_password and person_id:
                 try:
                     res = self.api.activate_ca(
@@ -80,12 +87,16 @@ class SinoPacEngine:
             return self.contracts_cache[code]
 
         try:
+            contract = None
             if code == "IX0001" or code == "TSE":
-                contract = self.api.Contracts.Indices.TSE.IX0001 # 台灣加權指數
+                contract = getattr(self.api.Contracts.Indices.TSE, "IX0001", None)
             elif code.startswith("TX") or code == "MX00":
-                contract = self.api.Contracts.Futures.TX00       # 台指期主力
+                contract = getattr(self.api.Contracts.Futures, "TX00", None)
             else:
-                contract = self.api.Contracts.Stocks.get(code)
+                if hasattr(self.api.Contracts.Stocks, code):
+                    contract = getattr(self.api.Contracts.Stocks, code)
+                elif hasattr(self.api.Contracts.Stocks, "get"):
+                    contract = self.api.Contracts.Stocks.get(code)
             
             if contract:
                 self.contracts_cache[code] = contract
@@ -112,19 +123,27 @@ class SinoPacEngine:
             try:
                 snapshots = self.api.snapshots(contracts_to_fetch)
                 for snap in snapshots:
+                    c_code = getattr(snap, "code", "")
+                    c_name = getattr(snap, "name", c_code)
+                    c_close = float(getattr(snap, "close", 0.0))
+                    c_change = float(getattr(snap, "change_price", 0.0))
+                    c_pct = float(getattr(snap, "change_rate", 0.0))
+                    c_vol = int(getattr(snap, "total_volume", 0))
+
                     results.append({
-                        "code": snap.code,
-                        "name": getattr(snap, "name", snap.code),
-                        "price": float(snap.close),
-                        "change": float(snap.change_price),
-                        "pct_change": float(snap.change_rate),
-                        "volume": int(snap.total_volume)
+                        "code": c_code,
+                        "name": c_name,
+                        "price": c_close,
+                        "change": c_change,
+                        "pct_change": c_pct,
+                        "volume": c_vol
                     })
-                return results
+                if results:
+                    return results
             except Exception as e:
                 logging.warning(f"抓取真實 Snapshots 失敗，切換動態防護: {e}")
 
-        # 離線與模擬行情備用 (精準呈現不同股票的最新價格)
+        # 離線與模擬行情備用
         mock_info = {
             "2330": {"name": "台積電", "price": 965.0, "change": 15.0, "pct": 1.58, "vol": 32540},
             "2317": {"name": "鴻海", "price": 202.5, "change": 3.5, "pct": 1.76, "vol": 48920},
@@ -156,8 +175,7 @@ class SinoPacEngine:
         if self.is_connected and contract:
             try:
                 today = datetime.date.today()
-                # 分鐘 K 棒限制 30 天內，日K以上傳入較長區間
-                days_back = 30 if "m" in ktype or "分" in ktype else limit * 2
+                days_back = 20 if "m" in ktype or "分" in ktype else limit * 2
                 start_date = (today - datetime.timedelta(days=days_back)).strftime("%Y-%m-%d")
                 end_date = today.strftime("%Y-%m-%d")
 
@@ -168,24 +186,34 @@ class SinoPacEngine:
                 )
                 df = pd.DataFrame({**kbars_raw})
                 if not df.empty:
-                    df['ts'] = pd.to_datetime(df['ts'])
+                    # 相容大小寫欄位
+                    col_map = {c.lower(): c for c in df.columns}
+                    ts_col = col_map.get('ts', 'ts')
+                    op_col = col_map.get('open', 'Open')
+                    hi_col = col_map.get('high', 'High')
+                    lo_col = col_map.get('low', 'Low')
+                    cl_col = col_map.get('close', 'Close')
+                    vo_col = col_map.get('volume', 'Volume')
+
+                    df[ts_col] = pd.to_datetime(df[ts_col])
                     df = df.tail(limit)
                     kbars = []
                     for _, row in df.iterrows():
                         time_fmt = "%Y-%m-%d" if ktype in ["Day", "日K", "日", "Week", "週", "Month", "月"] else "%m-%d %H:%M"
                         kbars.append({
-                            "datetime": row['ts'].strftime(time_fmt),
-                            "open": float(row['open']),
-                            "high": float(row['high']),
-                            "low": float(row['low']),
-                            "close": float(row['close']),
-                            "volume": int(row['volume'])
+                            "datetime": row[ts_col].strftime(time_fmt),
+                            "open": float(row[op_col]),
+                            "high": float(row[hi_col]),
+                            "low": float(row[lo_col]),
+                            "close": float(row[cl_col]),
+                            "volume": int(row[vo_col])
                         })
-                    return kbars
+                    if kbars:
+                        return kbars
             except Exception as e:
-                logging.warning(f"抓取全真 KBars ({code}, {ktype}) 失敗: {e}")
+                logging.warning(f"抓取全真 KBars ({code}, {ktype}) 失敗，啟用備用引擎: {e}")
 
-        # 模擬及離線動態生成 8 大全週期 K 棒數據 (確保懸停與時間軸 100% 正確)
+        # 動態補全與備用邏輯 (保證切換股票呈現不同動態行情)
         code_seed = sum(ord(c) for c in code)
         np.random.seed(code_seed)
 
