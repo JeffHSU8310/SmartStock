@@ -20,10 +20,10 @@ class DateAxisItem(pg.AxisItem):
         return strings
 
 class CandlestickItem(pg.GraphicsObject):
-    """pyqtgraph 原生紅綠 K 棒 (修復 open == close 橫線厚度與影線) (圖片 5 & 6 需求)"""
+    """pyqtgraph 原生紅綠 K 棒 (修復 open == close 橫線厚度與影線)"""
     def __init__(self, data):
         pg.GraphicsObject.__init__(self)
-        self.data = data  # list of (t, open, close, min, max)
+        self.data = data
         self.generatePicture()
 
     def generatePicture(self):
@@ -47,7 +47,7 @@ class CandlestickItem(pg.GraphicsObject):
             # 畫上下影線
             p.drawLine(QtCore.QPointF(t, low_p), QtCore.QPointF(t, high_p))
 
-            # 修復一字線/十字線 (open == close) 實體厚度，賦予標準 0.3 厚度視覺
+            # 修復一字線/十字線 (open == close) 實體厚度
             height = close_p - open_p
             if abs(height) < 0.05:
                 height = 0.25 if close_p >= open_p else -0.25
@@ -63,8 +63,8 @@ class CandlestickItem(pg.GraphicsObject):
         return QtCore.QRectF(self.picture.boundingRect())
 
 class NativeCandlestickChart(QtWidgets.QWidget):
-    """Pure Native Qt6 pyqtgraph K 線圖 (支援切換商品完全重置、DateAxis 與均線趨勢箭頭)"""
-    hover_kbar_signal = QtCore.Signal(dict) # 發送當前懸停的 K棒 數據與 MA 趨勢
+    """Pure Native Qt6 pyqtgraph K 線圖 (支援切換商品 Y軸 AutoRange 完全重置)"""
+    hover_kbar_signal = QtCore.Signal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -109,7 +109,7 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.win.scene().sigMouseMoved.connect(self.on_mouse_moved)
 
     def set_data(self, kbars: List[Dict]):
-        """切換商品時 100% 重置數據與時間軸 DateAxisItem (徹底修復切換商品資訊問題)"""
+        """切換商品時 100% 重置數據、DateAxisItem 與 Y 軸 AutoRange (徹底修復切換商品大叉叉空白問題)"""
         self.kbars_data = []
         self.dates = []
         self.ma5_vals = []
@@ -165,12 +165,17 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         bargraph = pg.BarGraphItem(x=x_indices, height=volumes, width=0.6, brushes=colors, pens=colors)
         self.p2.addItem(bargraph)
 
-        # 切換商品瞬間，立即廣播第一筆懸停資訊 (以最後一根 K 棒為準)
+        # ★★★ 核心關鍵修正：強制 Y 軸與 ViewBox 針對新商品 Price Range 進行 AutoRange 自動重置 ★★★
+        self.p1.enableAutoRange(axis='y', enable=True)
+        self.p1.autoRange()
+        self.p2.enableAutoRange(axis='y', enable=True)
+        self.p2.autoRange()
+
+        # 切換商品瞬間，廣播最後一筆 K 棒資訊
         if self.kbars_data:
             self.emit_hover_info(len(self.kbars_data) - 1)
 
     def on_mouse_moved(self, pos):
-        """游標懸停事件：即時發送該根 K 線之開高低收、漲跌與 MA 趨勢箭頭 (圖片 2 & 3 需求)"""
         if not self.kbars_data:
             return
 
@@ -189,7 +194,6 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             change = kb['close'] - prev_close
             pct_change = (change / prev_close * 100.0) if prev_close != 0 else 0.0
 
-            # 計算 MA5 趨勢箭頭 (圖片 2 需求)
             ma5_val = None
             ma5_arrow = "➡️"
             ma5_idx = idx - 4
@@ -200,7 +204,6 @@ class NativeCandlestickChart(QtWidgets.QWidget):
                     if ma5_val > prev_ma5: ma5_arrow = "⬆️"
                     elif ma5_val < prev_ma5: ma5_arrow = "⬇️"
 
-            # 計算 MA20 趨勢箭頭 (圖片 2 需求)
             ma20_val = None
             ma20_arrow = "➡️"
             ma20_idx = idx - 19

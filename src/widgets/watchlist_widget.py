@@ -1,61 +1,58 @@
 from PySide6 import QtCore, QtGui, QtWidgets
-from typing import List, Dict, Callable
+from typing import List, Dict
 
 class WatchlistWidget(QtWidgets.QWidget):
-    """自選股清單元件 (支援新增、刪除、上移、下移)"""
-    stock_selected_signal = QtCore.Signal(str, str) # 發送 (code, name)
+    """自選股管理元件 (支援動態全真快照更新 update_quote 與排序增刪)"""
+    stock_selected_signal = QtCore.Signal(str, str) # 發送 (股票代碼, 股票名稱)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.stocks = [
-            {"code": "2330", "name": "台積電", "price": 965.0, "pct": 1.58},
-            {"code": "2317", "name": "鴻海", "price": 202.5, "pct": 1.76},
-            {"code": "2454", "name": "聯發科", "price": 1240.0, "pct": -0.80},
-            {"code": "2308", "name": "台達電", "price": 395.0, "pct": 2.07},
-            {"code": "2382", "name": "廣達", "price": 288.0, "pct": 1.95},
-            {"code": "0050", "name": "元大台灣50", "price": 182.5, "pct": 0.66},
-            {"code": "TX00", "name": "台指期主力", "price": 22350.0, "pct": 0.81},
-        ]
         self._init_ui()
+        self._load_default_stocks()
 
     def _init_ui(self):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
 
-        # 頂部標題與新增輸入欄
-        top_box = QtWidgets.QHBoxLayout()
+        # 頂部控制欄 (輸入代碼 + 新增按鈕)
+        input_box = QtWidgets.QHBoxLayout()
         self.input_code = QtWidgets.QLineEdit()
-        self.input_code.setPlaceholderText("輸入股票代碼 (例: 2330)...")
+        self.input_code.setPlaceholderText("輸入股票代碼 (例: 0056)...")
+        self.input_code.returnPressed.connect(self.add_stock)
+        input_box.addWidget(self.input_code)
+
         btn_add = QtWidgets.QPushButton("➕ 新增")
-        btn_add.setStyleSheet("background-color: #00E676; color: #000000; font-weight: bold;")
+        btn_add.setStyleSheet("background-color: #00E676; color: #121418; font-weight: bold;")
         btn_add.clicked.connect(self.add_stock)
+        input_box.addWidget(btn_add)
 
-        top_box.addWidget(self.input_code)
-        top_box.addWidget(btn_add)
-        layout.addLayout(top_box)
+        layout.addLayout(input_box)
 
-        # 自選列表表格 (QTableWidget)
+        # 自選股表格 (代碼, 名稱, 成交價, 漲跌幅)
         self.table = QtWidgets.QTableWidget(0, 4)
         self.table.setHorizontalHeaderLabels(["代碼", "名稱", "成交價", "漲跌幅"])
-        self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeToContents)
         self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
-        self.table.itemClicked.connect(self.on_item_clicked)
+        self.table.itemSelectionChanged.connect(self.on_row_selected)
         layout.addWidget(self.table)
 
-        # 底部管理控制按鈕列 (刪除, 上移, 下移)
+        # 底部控制欄 (刪除 / 上移 / 下移)
         btn_box = QtWidgets.QHBoxLayout()
         btn_del = QtWidgets.QPushButton("🗑️ 刪除")
-        btn_del.setStyleSheet("background-color: #D32F2F; color: #FFFFFF;")
+        btn_del.setStyleSheet("background-color: #FF3B69; color: #FFFFFF;")
         btn_del.clicked.connect(self.delete_stock)
 
         btn_up = QtWidgets.QPushButton("⬆️ 上移")
-        btn_up.setStyleSheet("background-color: #37474F;")
+        btn_up.setStyleSheet("background-color: #1E222A; color: #FFFFFF;")
         btn_up.clicked.connect(self.move_up)
 
         btn_down = QtWidgets.QPushButton("⬇️ 下移")
-        btn_down.setStyleSheet("background-color: #37474F;")
+        btn_down.setStyleSheet("background-color: #1E222A; color: #FFFFFF;")
         btn_down.clicked.connect(self.move_down)
 
         btn_box.addWidget(btn_del)
@@ -63,63 +60,109 @@ class WatchlistWidget(QtWidgets.QWidget):
         btn_box.addWidget(btn_down)
         layout.addLayout(btn_box)
 
-        self.refresh_table()
+    def _load_default_stocks(self):
+        """初始自選股清單 (完全廢除寫死的假價格，成交價預設待全真 API 寫入)"""
+        default_list = [
+            ("2330", "台積電"),
+            ("2317", "鴻海"),
+            ("2454", "聯發科"),
+            ("2308", "台達電"),
+            ("2382", "廣達"),
+            ("0050", "元大台灣50"),
+            ("0056", "元大高股息"),
+            ("TX00", "台指期主力")
+        ]
+        for code, name in default_list:
+            self._insert_row(code, name, "--", "--")
 
-    def refresh_table(self):
-        self.table.setRowCount(len(self.stocks))
-        for row, s in enumerate(self.stocks):
-            self.table.setItem(row, 0, QtWidgets.QTableWidgetItem(s["code"]))
-            self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(s["name"]))
+    def _insert_row(self, code: str, name: str, price: str = "--", pct: str = "--"):
+        row = self.table.rowCount()
+        self.table.insertRow(row)
 
-            price_item = QtWidgets.QTableWidgetItem(f"{s['price']:.2f}")
-            pct_item = QtWidgets.QTableWidgetItem(f"{s['pct']:+.2f}%")
+        item_code = QtWidgets.QTableWidgetItem(code)
+        item_code.setTextAlignment(QtCore.Qt.AlignCenter)
+        self.table.setItem(row, 0, item_code)
 
-            color = '#FF3B69' if s['pct'] >= 0 else '#00E676'
-            price_item.setForeground(QtGui.QColor(color))
-            pct_item.setForeground(QtGui.QColor(color))
+        item_name = QtWidgets.QTableWidgetItem(name)
+        item_name.setTextAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        self.table.setItem(row, 1, item_name)
 
-            self.table.setItem(row, 2, price_item)
-            self.table.setItem(row, 3, pct_item)
+        item_price = QtWidgets.QTableWidgetItem(price)
+        item_price.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.table.setItem(row, 2, item_price)
 
-    def on_item_clicked(self, item):
-        row = item.row()
-        code = self.table.item(row, 0).text()
-        name = self.table.item(row, 1).text()
-        self.stock_selected_signal.emit(code, name)
+        item_pct = QtWidgets.QTableWidgetItem(pct)
+        item_pct.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.table.setItem(row, 3, item_pct)
+
+    def update_quote(self, code: str, price: float, pct_change: float):
+        """全真快照動態更新自選股列表之價格與漲跌幅 (高亮顯示顏色) (徹底消除 AttributeError)"""
+        for row in range(self.table.rowCount()):
+            item_code = self.table.item(row, 0)
+            if item_code and item_code.text() == code:
+                # 1. 更新成交價
+                item_price = QtWidgets.QTableWidgetItem(f"{price:.2f}")
+                item_price.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+                item_price.setForeground(QtGui.QColor("#FF3B69" if pct_change >= 0 else "#00E676"))
+                self.table.setItem(row, 2, item_price)
+
+                # 2. 更新漲跌幅
+                sign = "+" if pct_change >= 0 else ""
+                item_pct = QtWidgets.QTableWidgetItem(f"{sign}{pct_change:.2f}%")
+                item_pct.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+                item_pct.setForeground(QtGui.QColor("#FF3B69" if pct_change >= 0 else "#00E676"))
+                self.table.setItem(row, 3, item_pct)
+                break
 
     def add_stock(self):
-        code = self.input_code.text().strip()
+        code = self.input_code.text().strip().upper()
         if not code:
             return
-        # 避免重複
-        for s in self.stocks:
-            if s["code"] == code:
-                QtWidgets.QMessageBox.information(self, "提示", f"股票代碼 {code} 已在自選股清單中！")
+        
+        # 避免重複新增
+        for row in range(self.table.rowCount()):
+            if self.table.item(row, 0).text() == code:
+                QtWidgets.QMessageBox.information(self, "提醒", f"股票代碼 {code} 已在自選股清單中！")
+                self.input_code.clear()
                 return
 
-        # 預設新增股票資料
-        self.stocks.append({"code": code, "name": f"股票 {code}", "price": 100.0, "pct": 0.0})
+        name_map = {"2330": "台積電", "2317": "鴻海", "2454": "聯發科", "0050": "元大台灣50", "0056": "元大高股息", "TX00": "台指期主力"}
+        name = name_map.get(code, f"股票 {code}")
+
+        self._insert_row(code, name, "--", "--")
         self.input_code.clear()
-        self.refresh_table()
+        
+        # 自動選中新新增的行
+        self.table.selectRow(self.table.rowCount() - 1)
 
     def delete_stock(self):
         row = self.table.currentRow()
-        if row < 0 or row >= len(self.stocks):
-            QtWidgets.QMessageBox.warning(self, "提示", "請先選擇欲刪除的自選股！")
-            return
-        del self.stocks[row]
-        self.refresh_table()
+        if row >= 0:
+            self.table.removeRow(row)
 
     def move_up(self):
         row = self.table.currentRow()
         if row > 0:
-            self.stocks[row], self.stocks[row - 1] = self.stocks[row - 1], self.stocks[row]
-            self.refresh_table()
+            self._swap_rows(row, row - 1)
             self.table.selectRow(row - 1)
 
     def move_down(self):
         row = self.table.currentRow()
-        if row >= 0 and row < len(self.stocks) - 1:
-            self.stocks[row], self.stocks[row + 1] = self.stocks[row + 1], self.stocks[row]
-            self.refresh_table()
+        if row < self.table.rowCount() - 1:
+            self._swap_rows(row, row + 1)
             self.table.selectRow(row + 1)
+
+    def _swap_rows(self, r1: int, r2: int):
+        for c in range(4):
+            i1 = self.table.takeItem(r1, c)
+            i2 = self.table.takeItem(r2, c)
+            self.table.setItem(r1, c, i2)
+            self.table.setItem(r2, c, i1)
+
+    def on_row_selected(self):
+        row = self.table.currentRow()
+        if row >= 0:
+            item_code = self.table.item(row, 0)
+            item_name = self.table.item(row, 1)
+            if item_code and item_name:
+                self.stock_selected_signal.emit(item_code.text(), item_name.text())
