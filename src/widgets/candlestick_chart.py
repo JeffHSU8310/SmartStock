@@ -233,8 +233,8 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             m_bars = pg.BarGraphItem(x=list(range(len(kbars))), height=macd_bar, y0=0, width=0.5, brushes=m_colors)
             self.p3.addItem(m_bars)
 
-        # 5. 預設主圖視野精準縮放至近 6 個月預設 (顯示 30 根精選大寬度 K 棒)
-        self.set_view_range_months(6)
+        # 5. 預設主圖視野精準縮放至近 1 年預設 (顯示 60 根精選大寬度 K 棒)
+        self.set_view_range_months(12)
 
     def set_view_range_months(self, months: int):
         """修正時間快選按鈕：縮放 X 軸並針對可視區域自適應 Y 軸"""

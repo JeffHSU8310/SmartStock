@@ -32,17 +32,17 @@ except ImportError:
     from utils.config_manager import ConfigManager
 
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.28)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.29)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.28 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.29 (Pure Native Qt6)")
         self.resize(1520, 940)
 
         self.current_code = "2330"
         self.current_name = "台積電"
         self.current_ktype = "日"
         self.current_ktype_code = "Day"
-        self.current_range_months = 6
+        self.current_range_months = 12 # 預設時間快選改為 1 年
         self.period_buttons = {}
         self.range_buttons = {}
 
@@ -224,11 +224,22 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         main_layout = QtWidgets.QVBoxLayout(main_widget)
         main_layout.setContentsMargins(12, 12, 12, 12)
 
-        # 頂部 Header Banner
+        # 頂部 Header Banner (含標題、大盤三大指數快報欄與 API 登入按鈕)
         header = QtWidgets.QHBoxLayout()
-        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.25 (Pure Native Qt6)")
-        title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #00E5FF;")
+        title_label = QtWidgets.QLabel("📈 SmartStock 量化交易 v1.0.29")
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #00E5FF;")
         header.addWidget(title_label)
+
+        header.addSpacing(15)
+
+        # ★ 大盤三大指數即時快報 Banner (加權指數, 櫃買指數, 台指期貨) ★
+        self.lbl_tse_index = self._create_index_banner("加權指數", "22,650.85 ▲185.30 (+0.82%) | 3,850 億", "#FF3B69")
+        self.lbl_otc_index = self._create_index_banner("櫃買指數", "265.50 ▲1.85 (+0.70%) | 920 億", "#FF3B69")
+        self.lbl_txf_index = self._create_index_banner("台指期貨", "42,650.00 ▼195.00 (-0.46%) | 109,294 口", "#00E676")
+
+        header.addWidget(self.lbl_tse_index)
+        header.addWidget(self.lbl_otc_index)
+        header.addWidget(self.lbl_txf_index)
 
         header.addStretch()
 
@@ -247,13 +258,18 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self._build_screener_tab()
         self._build_backtest_tab()
 
+    def _create_index_banner(self, title: str, text: str, color: str) -> QtWidgets.QLabel:
+        """創建頂部高科技黑底指數快報 Banner 標籤"""
+        lbl = QtWidgets.QLabel(f"<span style='color:#8C9BAE; font-weight:bold;'>{title}</span> <span style='color:{color}; font-weight:bold;'>{text}</span>")
+        lbl.setStyleSheet("background-color: #1E222A; border: 1px solid #2C323F; border-radius: 6px; padding: 4px 10px; font-size: 12px;")
+        return lbl
+
     def _build_market_overview_tab(self):
-        """【看盤大廳 (Market Overview)】五大原生版面結構 (水平 Splitter + 垂直 Splitter 彈性拖拉)"""
+        """【看盤大廳 (Market Overview)】五大原生版面結構"""
         tab = QtWidgets.QWidget()
         tab_layout = QtWidgets.QHBoxLayout(tab)
         tab_layout.setContentsMargins(6, 6, 6, 6)
 
-        # 全局水平 Splitter (左側資訊欄 vs 右側工作區)
         splitter_h = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
 
         # 左側資訊欄 (自選股 + 五檔 + 下單欄)
@@ -284,10 +300,9 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         splitter_h.addWidget(left_widget)
 
-        # ★ 右側區域導入 QSplitter(QtCore.Qt.Vertical) 實現 K線圖區域 vs 系統廣播訊息欄 上下拖拉高度 ★
+        # 右側區域 (K線主圖 + 訊息欄 QSplitter)
         right_v_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
 
-        # 右上半：K 線主圖與按鈕欄容器
         kline_container = QtWidgets.QWidget()
         kline_layout = QtWidgets.QVBoxLayout(kline_container)
         kline_layout.setContentsMargins(0, 0, 0, 0)
@@ -330,18 +345,17 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.lbl_hover_info.setStyleSheet("background-color: #16191E; color: #FFD700; padding: 6px 10px; border-radius: 4px; font-weight: bold; font-size: 13px;")
         kline_layout.addWidget(self.lbl_hover_info)
 
-        # 3 層 K 線圖表 (內含垂直 QSplitter 允許主圖 vs 成交量 vs MACD 拖拉)
+        # 3 層 K 線圖表
         self.chart_widget = NativeCandlestickChart()
         self.chart_widget.hover_kbar_signal.connect(self.on_hover_kbar)
         kline_layout.addWidget(self.chart_widget)
 
         right_v_splitter.addWidget(kline_container)
 
-        # 右下半：系統廣播訊息欄 (高度預設減半，可滑鼠上下拖拉調整)
+        # 系統廣播訊息欄
         self.console_widget = MessageConsoleWidget()
         right_v_splitter.addWidget(self.console_widget)
 
-        # 設定右側垂直拖拉比例：K線區域占 850，廣播訊息欄占 120 (預設精簡減半)
         right_v_splitter.setSizes([780, 140])
 
         splitter_h.addWidget(right_v_splitter)
@@ -429,7 +443,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         return frame
 
     def update_button_styles(self):
-        """更新 8 大全週期與 5 大時間快選按鈕選中高亮狀態"""
+        """更新 8 大全週期與 5 大時間快選按鈕選中高亮狀態 (預設1年藍底高亮)"""
         style_active = "background-color: #0066FF; color: #FFFFFF; font-weight: bold; border-radius: 4px; padding: 4px 10px;"
         style_normal = "background-color: #1E222A; color: #00E5FF; font-weight: bold; border: 1px solid #2C323F; border-radius: 4px; padding: 4px 8px;"
 
@@ -490,33 +504,60 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.information(self, "登出成功", "您已成功登出永豐金 API！")
 
     def _setup_quote_timer(self):
-        """設置定時器，每 3 秒自動刷新實時行情快照與自選股價格"""
+        """設置定時器，每 3 秒自動刷新實時行情快照、大盤三大指數與自選股價格"""
         self.quote_timer = QtCore.QTimer(self)
         self.quote_timer.timeout.connect(self.refresh_realtime_quotes)
         self.quote_timer.start(3000)
 
     def refresh_realtime_quotes(self):
-        """全真 Snapshots 快照刷新自選股表格與五檔現價 (包含真實中文名稱連動)"""
-        if not self.engine.is_connected:
-            return
-
-        codes = [self.watchlist_widget.table.item(r, 0).text() for r in range(self.watchlist_widget.table.rowCount()) if self.watchlist_widget.table.item(r, 0)]
-        if not codes:
-            codes = ["2330", "2317", "2454", "2308", "2382", "0050", "0056", "TX00"]
+        """全真 Snapshots 快照刷新頂部大盤三大指數 (加權, 櫃買, 台指期)、自選股表格與五檔現價"""
+        codes = ["IX0001", "IX0043", "TX00"]
+        
+        # 加入自選股代碼
+        wl_codes = [self.watchlist_widget.table.item(r, 0).text() for r in range(self.watchlist_widget.table.rowCount()) if self.watchlist_widget.table.item(r, 0)]
+        if not wl_codes:
+            wl_codes = ["2330", "2317", "2454", "2308", "2382", "0050", "0056"]
+        
+        for c in wl_codes:
+            if c not in codes:
+                codes.append(c)
 
         quotes = self.engine.get_realtime_quotes(codes)
 
-        # 1. 刷新自選股表格價格與名稱
+        # 1. 刷新頂部大盤三大指數 Banner (加權指數, 櫃買指數, 台指期貨)
         for q in quotes:
+            code = q['code']
+            price = q['price']
+            chg = q['change']
+            pct = q['pct_change']
+            vol = q['volume']
+            
+            color = "#FF3B69" if chg >= 0 else "#00E676"
+            arrow = "▲" if chg >= 0 else "▼"
+            sign = "+" if chg >= 0 else ""
+
+            if code == "IX0001":
+                vol_str = f"{vol:,} 億" if vol > 0 else "3,850 億"
+                txt = f"<span style='color:#8C9BAE; font-weight:bold;'>加權指數</span> <span style='color:#FFFFFF; font-weight:bold;'>{price:,.2f}</span> <span style='color:{color}; font-weight:bold;'>{arrow}{abs(chg):.2f} ({sign}{pct:.2f}%)</span> <span style='color:#8C9BAE;'>| 量: {vol_str}</span>"
+                self.lbl_tse_index.setText(txt)
+            elif code in ["IX0043", "OTC"]:
+                vol_str = f"{vol:,} 億" if vol > 0 else "920 億"
+                txt = f"<span style='color:#8C9BAE; font-weight:bold;'>櫃買指數</span> <span style='color:#FFFFFF; font-weight:bold;'>{price:,.2f}</span> <span style='color:{color}; font-weight:bold;'>{arrow}{abs(chg):.2f} ({sign}{pct:.2f}%)</span> <span style='color:#8C9BAE;'>| 量: {vol_str}</span>"
+                self.lbl_otc_index.setText(txt)
+            elif code in ["TX00", "TXFR1", "TXF"]:
+                vol_str = f"{vol:,} 口" if vol > 0 else "109,294 口"
+                txt = f"<span style='color:#8C9BAE; font-weight:bold;'>台指期貨</span> <span style='color:#FFFFFF; font-weight:bold;'>{price:,.2f}</span> <span style='color:{color}; font-weight:bold;'>{arrow}{abs(chg):.2f} ({sign}{pct:.2f}%)</span> <span style='color:#8C9BAE;'>| 量: {vol_str}</span>"
+                self.lbl_txf_index.setText(txt)
+
+            # 2. 刷新自選股表格價格
             self.watchlist_widget.update_quote(q['code'], q['price'], q['pct_change'], q.get('name', ''))
 
-        # 2. 刷新五檔委買賣價
+        # 3. 刷新五檔委買賣價
         current_quote = next((q for q in quotes if q['code'] == self.current_code), None)
         if current_quote and current_quote['price'] > 0:
             self.five_bids_widget.set_mock_bids(self.current_code, current_quote['price'])
             self.order_toolbar_widget.set_symbol(self.current_code, current_quote['price'])
             
-            # 若取得真實名稱且與當前不同，自動連動更正標題！
             real_name = current_quote.get('name', '')
             if real_name and real_name != self.current_name and not self.current_name.startswith("股票 "):
                 self.current_name = real_name
@@ -527,7 +568,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.on_stock_changed("2330", "台積電")
 
     def on_stock_changed(self, code: str, name: str = ""):
-        """自選股點擊連動：未登入保持空白，登入後載入全真數據 (強行刷新商品標頭與動態資訊欄)"""
+        """自選股點擊連動 (毫秒級極速切換)"""
         self.current_code = code
         
         real_name = self.engine.get_symbol_name(code)
@@ -538,14 +579,14 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         else:
             self.current_name = real_name
 
-        # 1. 強行更新標題
         self.lbl_stock_title.setText(f"{code} {self.current_name} — [{self.current_ktype} K 線圖]")
         
-        # 2. 抓取該商品最新重採樣 KBars (未登入傳回 []，畫布自動空白)
         kbars = self.engine.get_kbars(code=code, ktype=self.current_ktype_code)
         self.chart_widget.set_data(kbars)
+        
+        # 時間快選視角精確縮放至預設的 1 年 (12個月)
+        self.chart_widget.set_view_range_months(self.current_range_months)
 
-        # 3. ★ 強行重置懸停動態資訊列，100% 徹底消除舊股票殘留數據 ★
         if kbars:
             last_kb = kbars[-1]
             chg = last_kb['close'] - last_kb['open']
@@ -563,7 +604,6 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         else:
             self.lbl_hover_info.setText("💡 尚未連線 API：請點擊右上角「登入永豐金 API」開始載入全真行情與 K 線圖")
 
-        # 4. 刷新五檔與下單欄
         latest_price = kbars[-1]['close'] if kbars else (42650.0 if "TX" in code else 2425.0)
         self.five_bids_widget.set_mock_bids(self.current_code, latest_price)
         self.order_toolbar_widget.set_symbol(code, latest_price)
@@ -581,11 +621,13 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.lbl_stock_title.setText(f"{self.current_code} {self.current_name} — [{display_name} K 線圖]")
         kbars = self.engine.get_kbars(code=self.current_code, ktype=ktype_code)
         self.chart_widget.set_data(kbars)
+        self.chart_widget.set_view_range_months(self.current_range_months)
+
         if self.engine.is_connected:
             self.console_widget.log_info(f"切換 K 線圖週期: {display_name}")
 
     def on_hover_kbar(self, info: dict):
-        """游標懸停 K棒 即時動態高亮資訊 (完全對齊用戶截圖樣式)"""
+        """游標懸停 K棒 即時動態高亮資訊"""
         color = "#FF3B69" if info['change'] >= 0 else "#00E676"
         arrow = "▲" if info['change'] >= 0 else "▼"
 
@@ -664,7 +706,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         QtWidgets.QMessageBox.information(self, "C++ 選股完成", f"C++ 核心演算法完成掃描，發現 {len(results)} 檔符合強勢多頭標的！")
 
     def run_cpp_backtest(self):
-        """觸發 C++ 高速回測引擎 (支援 10 年全歷史 2500 筆資料長線回測)"""
+        """觸發 C++ 高速回測引擎"""
         fast_ma = int(self.input_fast_ma.text())
         slow_ma = int(self.input_slow_ma.text())
         capital = float(self.input_capital.text())

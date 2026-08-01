@@ -177,9 +177,9 @@ class SinoPacEngine:
         return common_names.get(code, f"股票 {code}")
 
     def get_realtime_quotes(self, code_list: List[str] = None) -> List[Dict]:
-        """取得全真 Snapshots 快照報價"""
+        """取得全真 Snapshots 快照報價 (包含加權指數 IX0001, 櫃買指數 IX0043, 台指期 TX00)"""
         if code_list is None:
-            code_list = ["2330", "2317", "2454", "2308", "2382", "0050", "0056", "TX00"]
+            code_list = ["IX0001", "IX0043", "TX00", "2330", "2317", "2454", "2308", "2382", "0050", "0056"]
 
         results = []
         contracts_to_fetch = []
@@ -200,6 +200,7 @@ class SinoPacEngine:
                     c_change = float(getattr(snap, "change_price", 0.0))
                     c_pct = float(getattr(snap, "change_rate", 0.0))
                     c_vol = int(getattr(snap, "total_volume", 0))
+                    c_amount = float(getattr(snap, "total_amount", 0.0)) # 成交金額
 
                     display_code = "TX00" if c_code in ["TXFR1", "TXF"] else c_code
                     display_name = self.get_symbol_name(display_code) if not c_name else c_name
@@ -211,7 +212,8 @@ class SinoPacEngine:
                             "price": c_close,
                             "change": c_change,
                             "pct_change": c_pct,
-                            "volume": c_vol
+                            "volume": c_vol,
+                            "amount": c_amount
                         })
                 if results:
                     return results
