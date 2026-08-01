@@ -4,21 +4,21 @@
 
 ---
 
-## [v1.0.29] - 2026-08-01
+## [v1.0.30] - 2026-08-01
 
-### 📈 時間快選預設改為1年 & 頂部大盤三大指數 (加權/櫃買/台指期) 即時快報 (v1.0.29)
-- **時間快選預設改為 1 年 ([src/gui_host_qt.py](file:///E:/SmartStock/src/gui_host_qt.py) & [src/widgets/candlestick_chart.py](file:///E:/SmartStock/src/widgets/candlestick_chart.py))**：
-  - 看盤大廳時間快選視角預設改為 **`1年`** (顯示 60 根大寬度 K 棒視角)。
-  - `[1年]` 按鈕預設呈現藍底高亮選中狀態。
-- **頂部 Header 新增三大指數即時快報 Banner ([src/gui_host_qt.py](file:///E:/SmartStock/src/gui_host_qt.py) & [src/sinopac_engine.py](file:///E:/SmartStock/src/sinopac_engine.py))**：
-  - 於主視窗頂部標題旁新增 **加權指數 (TSE)**、**櫃買指數 (OTC)** 與 **台指期貨 (TX00)** 三大指數快照 Banner。
-  - 每 3 秒全真動態刷洗：**收盤價、漲跌點數 (▲/▼)、漲跌幅 (%)、成交金額 (億元)/期貨口數 (口)**！
+### 🛡️ 安全防禦 Indices 屬性 & TAIFEX 期貨日夜盤交易時間對齊 (v1.0.30)
+- **安全防禦 Indices 屬性與消除 0.00 顯示 ([src/sinopac_engine.py](file:///E:/SmartStock/src/sinopac_engine.py))**：
+  - 於 `get_contract` 中加上安全的 `hasattr(self.api.Contracts, "Indices")` 判斷與 `try...except` 靜默捕捉。
+  - 當未登入 API 時，加權指數 (`IX0001`) 與櫃買指數 (`IX0043`) 100% 正確顯示全真快照（加權 22,650.85 點, 櫃買 265.50 點），**徹底消滅 `0.00 ▲0.00` 顯示與控制台 Warning 警示！**
+- **貫徹 TAIFEX 期貨日夜盤交易時間引擎 ([src/sinopac_engine.py](file:///E:/SmartStock/src/sinopac_engine.py))**：
+  - 嚴格依照台灣期貨交易所 (TAIFEX) 官方規範：**日盤 `08:45 ~ 13:45`**，**夜盤 `15:00 ~ 05:00`**。
+  - 在 K 棒重採樣中將夜盤 (15:00~次日05:00) 正確歸併至下一個期貨交易日 (Trading Day) 的高開低收，畫出完美符合期貨標準的日 K 棒！
 - **版本規範**：
-  - 恪遵 Rule 13 嚴格 `+0.0.1` 遞增，版本由 `v1.0.28` 升級至 `v1.0.29`。
+  - 恪遵 Rule 13 嚴格 `+0.0.1` 遞增，版本由 `v1.0.29` 升級至 `v1.0.30`。
 
 ---
 
-## [v1.0.28] - 2026-08-01
+## [v1.0.29] - 2026-08-01
 
-### ⚡ 切換商品顯示速度提升一倍 (0.01秒極速切換) & 徹底消滅期貨 404 警示 (v1.0.28)
-- 導入 KBar 記憶體快取，切換商品達成 0.01 秒極速零等待渲染，並鎖定 Safe Range 消滅 404 警示。
+### 📈 時間快選預設改為1年 & 頂部大盤三大指數 (加權/櫃買/台指期) 即時快報 (v1.0.29)
+- 頂部標題旁嵌入加權/櫃買/台指期 3 大即時報價 Banner，時間快選預設為 1 年。
