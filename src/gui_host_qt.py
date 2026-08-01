@@ -1,14 +1,32 @@
 import sys
 import os
+
+# 自動將專案根目錄加入 sys.path，解決 ModuleNotFoundError: No module named 'src'
+current_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(current_dir)
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
 import ctypes
 from typing import List, Dict
 from PySide6 import QtCore, QtGui, QtWidgets
-from src.sinopac_engine import SinoPacEngine
-from src.widgets.candlestick_chart import NativeCandlestickChart
-from src.widgets.watchlist_widget import WatchlistWidget
-from src.widgets.five_bids_widget import FiveBidsWidget
-from src.widgets.order_toolbar import OrderToolbarWidget
-from src.widgets.message_console import MessageConsoleWidget
+
+try:
+    from src.sinopac_engine import SinoPacEngine
+    from src.widgets.candlestick_chart import NativeCandlestickChart
+    from src.widgets.watchlist_widget import WatchlistWidget
+    from src.widgets.five_bids_widget import FiveBidsWidget
+    from src.widgets.order_toolbar import OrderToolbarWidget
+    from src.widgets.message_console import MessageConsoleWidget
+except ImportError:
+    from sinopac_engine import SinoPacEngine
+    from widgets.candlestick_chart import NativeCandlestickChart
+    from widgets.watchlist_widget import WatchlistWidget
+    from widgets.five_bids_widget import FiveBidsWidget
+    from widgets.order_toolbar import OrderToolbarWidget
+    from widgets.message_console import MessageConsoleWidget
 
 # 定義 C++ 結構 ctypes Mapping
 class CXXKBar(ctypes.Structure):
@@ -43,10 +61,10 @@ class CXXBacktestResult(ctypes.Structure):
     ]
 
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.3)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.4)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.3 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.4 (Pure Native Qt6)")
         self.resize(1480, 920)
 
         self.current_code = "2330"
@@ -61,7 +79,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.load_initial_data()
 
     def _load_cpp_dll(self):
-        dll_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "smartstock_core.dll")
+        dll_path = os.path.join(root_dir, "smartstock_core.dll")
         if os.path.exists(dll_path):
             try:
                 dll = ctypes.CDLL(dll_path)
@@ -171,7 +189,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         # 頂部 Header Banner
         header = QtWidgets.QHBoxLayout()
-        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.3 (Pure Native Qt6)")
+        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.4 (Pure Native Qt6)")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #00E5FF;")
         header.addWidget(title_label)
 
