@@ -64,10 +64,10 @@ class CXXBacktestResult(ctypes.Structure):
     ]
 
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.8)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.1.3)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.8 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.1.3 (Pure Native Qt6)")
         self.resize(1520, 940)
 
         self.current_code = "2330"
@@ -217,7 +217,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         # 頂部 Header Banner
         header = QtWidgets.QHBoxLayout()
-        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.8 (Pure Native Qt6)")
+        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.1.3 (Pure Native Qt6)")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #00E5FF;")
         header.addWidget(title_label)
 
@@ -302,7 +302,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         right_layout.addLayout(kline_header)
 
-        # 圖片 2 需求：游標懸停 K 棒動態高亮資訊欄 (含 MA5 / MA20 趨勢箭頭)
+        # 游標懸停 K 棒動態高亮資訊欄 (含 MA5 / MA20 趨勢箭頭)
         self.lbl_hover_info = QtWidgets.QLabel("💡 移至 K 線可即時檢視該棒詳細價格、漲跌點數、均線趨勢與成交量")
         self.lbl_hover_info.setStyleSheet("background-color: #16191E; color: #FFD700; padding: 6px 10px; border-radius: 4px; font-weight: bold; font-size: 12px;")
         right_layout.addWidget(self.lbl_hover_info)
@@ -401,7 +401,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         return frame
 
     def update_period_button_styles(self):
-        """更新 8 大全週期按鈕選中高亮狀態 (圖片 1 需求實作)"""
+        """更新 8 大全週期按鈕選中高亮狀態"""
         style_active = "background-color: #0066FF; color: #FFFFFF; font-weight: bold; border-radius: 4px; padding: 4px 10px;"
         style_normal = "background-color: #1E222A; color: #00E5FF; font-weight: bold; border-radius: 4px; padding: 4px 10px;"
 
@@ -445,16 +445,16 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.information(self, "登出成功", "您已成功登出永豐金 API！")
 
     def _setup_quote_timer(self):
-        """設置定時器，每 3 秒自動刷新實時行情快照與自選股價格 (圖片 3 & 4 需求實作)"""
+        """設置定時器，每 3 秒自動刷新實時行情快照與自選股價格"""
         self.quote_timer = QtCore.QTimer(self)
         self.quote_timer.timeout.connect(self.refresh_realtime_quotes)
         self.quote_timer.start(3000)
 
     def refresh_realtime_quotes(self):
-        """全真 Snapshots 快照刷新自選股表格與五檔現價 (圖片 3 需求實作)"""
+        """全真 Snapshots 快照刷新自選股表格與五檔現價"""
         codes = [self.watchlist_widget.table.item(r, 0).text() for r in range(self.watchlist_widget.table.rowCount()) if self.watchlist_widget.table.item(r, 0)]
         if not codes:
-            codes = ["2330", "2317", "2454", "2308", "2382", "0050", "TX00"]
+            codes = ["2330", "2317", "2454", "2308", "2382", "0050", "0056", "TX00"]
 
         quotes = self.engine.get_realtime_quotes(codes)
 
@@ -462,10 +462,10 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         for q in quotes:
             self.watchlist_widget.update_quote(q['code'], q['price'], q['pct_change'])
 
-        # 2. 刷新五檔委買賣價
+        # 2. 刷新五檔委買賣價 (傳遞 current_code 與 price 雙參數)
         current_quote = next((q for q in quotes if q['code'] == self.current_code), None)
         if current_quote:
-            self.five_bids_widget.set_mock_bids(current_quote['price'])
+            self.five_bids_widget.set_mock_bids(self.current_code, current_quote['price'])
             self.order_toolbar_widget.set_symbol(self.current_code, current_quote['price'])
 
     def load_initial_data(self):
@@ -473,7 +473,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.on_stock_changed("2330", "台積電")
 
     def on_stock_changed(self, code: str, name: str):
-        """自選股點擊連動：徹底重置切換商品 K 線圖資訊 (圖片 3 & 切換商品修復)"""
+        """自選股點擊連動：徹底重置切換商品 K 線圖資訊"""
         self.current_code = code
         self.current_name = name
 
@@ -483,9 +483,9 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         kbars = self.engine.get_kbars(code=code, ktype=self.current_ktype_code)
         self.chart_widget.set_data(kbars)
 
-        # 2. 刷新五檔
+        # 2. 刷新五檔 (傳遞 current_code 與 price 雙參數)
         latest_price = kbars[-1]['close'] if kbars else 100.0
-        self.five_bids_widget.set_mock_bids(latest_price)
+        self.five_bids_widget.set_mock_bids(self.current_code, latest_price)
 
         # 3. 填入下單欄
         self.order_toolbar_widget.set_symbol(code, latest_price)
@@ -506,7 +506,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.console_widget.log_info(f"切換 K 線圖週期: {display_name}")
 
     def on_hover_kbar(self, info: dict):
-        """游標懸停 K棒 即時動態高亮資訊 (含 MA5 / MA20 趨勢箭頭 圖片 2 需求實作)"""
+        """游標懸停 K棒 即時動態高亮資訊 (含 MA5 / MA20 趨勢箭頭)"""
         color = "#FF3B69" if info['change'] >= 0 else "#00E676"
         sign = "+" if info['change'] >= 0 else ""
         

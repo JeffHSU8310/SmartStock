@@ -1,12 +1,22 @@
 from PySide6 import QtCore, QtGui, QtWidgets
-from typing import Dict, List
+from typing import Dict, List, Union
 
-def get_twse_tick_size(code: str, price: float) -> float:
+def get_twse_tick_size(code: Union[str, float, int], price: float = None) -> float:
     """
     台灣證券交易所 (TWSE) / 櫃買中心 (TPEx) 官方 Tick 升降單位計算器 (Rule 19 實作)
-    區分：一般股票 (Equities) vs ETF (指數股票型基金受益憑證) 專屬雙軌規範
+    支援全型態防禦 (字串、浮點數與單參數傳遞防護)
     """
-    is_etf = code.startswith("00")
+    # 若僅傳入一個數值 (例: get_twse_tick_size(2425.0))
+    if isinstance(code, (int, float)) and price is None:
+        price = float(code)
+        code_str = ""
+    elif price is None:
+        price = 0.0
+        code_str = str(code)
+    else:
+        code_str = str(code)
+
+    is_etf = code_str.startswith("00")
     
     if is_etf:
         # ★ TWSE ETF 專屬特規升降單位 ★
@@ -49,18 +59,28 @@ class FiveBidsWidget(QtWidgets.QWidget):
         layout.addWidget(self.table)
         self.set_mock_bids("2330", 2425.0)
 
-    def set_mock_bids(self, code: str = "2330", base_price: float = 2425.0):
-        """依據 TWSE 官方 Tick 升降單位計算並動態填入 5 檔委買與委賣價"""
-        tick_size = get_twse_tick_size(code, base_price)
+    def set_mock_bids(self, code_or_price: Union[str, float] = "2330", base_price: float = None):
+        """依據 TWSE 官方 Tick 升降單位計算並動態填入 5 檔委買與委賣價 (強型態容錯)"""
+        if isinstance(code_or_price, (int, float)) and base_price is None:
+            price = float(code_or_price)
+            code = ""
+        elif base_price is None:
+            price = 2425.0
+            code = str(code_or_price)
+        else:
+            code = str(code_or_price)
+            price = float(base_price)
+
+        tick_size = get_twse_tick_size(code, price)
 
         bids_qty = [63, 51, 39, 27, 15]
         asks_qty = [23, 38, 53, 68, 83]
 
         for i in range(5):
             # 賣價 (Ask 1 ~ 5) 高於當前價
-            ask_price = base_price + (i + 1) * tick_size
+            ask_price = price + (i + 1) * tick_size
             # 買價 (Bid 1 ~ 5) 低於或等於當前價
-            bid_price = base_price - i * tick_size
+            bid_price = price - i * tick_size
 
             # 買張 (欄 0)
             item_b_qty = QtWidgets.QTableWidgetItem(str(bids_qty[i]))

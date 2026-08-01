@@ -6,25 +6,25 @@
 
 ## 📜 對話紀錄歷程
 
-### 📌 [記錄時間: 2026-08-01] - 追加第 20 條沙盒測試結果完整報告規範 & 發布 v1.1.2 (v1.1.2)
+### 📌 [記錄時間: 2026-08-01] - 修復五檔元件 get_twse_tick_size 參數容錯 & 發布 v1.1.3 (v1.1.3)
 
 - **使用者需求 (User Prompt)**:
-  - 要求將「每一次修改在沙盒中測試結果，不論是否有問題，都要完整的跟我報告」寫入規則中。
+  - 貼出截圖 Traceback：`AttributeError: 'float' object has no attribute 'startswith'`，要求修復。
 
 - **系統處理與決策 (System Action & Decision)**:
-  - 於 [`PROJECT_RULES.md`](file:///E:/SmartStock/PROJECT_RULES.md) 完整寫入 Rule 20 沙盒測試結果完整報告規範。
-  - 於 [`CHANGELOG.md`](file:///E:/SmartStock/CHANGELOG.md) 紀錄 `v1.1.2` 變更。
-  - 執行 Git Commit 與 Push 同步至 GitHub (`https://github.com/JeffHSU8310/SmartStock.git`) 的 `main` 分支。
+  - 於 [`src/widgets/five_bids_widget.py`](file:///E:/SmartStock/src/widgets/five_bids_widget.py) 寫入強型態容錯，確保只傳單價格時能動態自動轉譯。
+  - 於 [`src/gui_host_qt.py`](file:///E:/SmartStock/src/gui_host_qt.py) 傳遞 `current_code` 與 `price` 雙參數。
+  - 沙盒測試通過，Commit 並 Push 至 GitHub (`https://github.com/JeffHSU8310/SmartStock.git`) 的 `main` 分支。
 
 - **當前專案狀態**:
   - **本機工作目錄**: `E:\SmartStock`
-  - **軟體版本**: v1.1.2 (恪遵 Rule 13 `+0.0.1` 遞增)
+  - **軟體版本**: v1.1.3 (恪遵 Rule 13 `+0.0.1` 遞增)
   - **GitHub 儲存庫**: `https://github.com/JeffHSU8310/SmartStock.git`
   - **Git 分支**: main
 
 ---
 
-### 📌 [記錄時間: 2026-08-01] - 追加第 19 條 TWSE 股票 vs ETF 升降單位雙軌規範 & 發布 v1.1.1 (v1.1.1)
+### 📌 [記錄時間: 2026-08-01] - 追加第 20 條沙盒測試結果完整報告規範 & 發布 v1.1.2 (v1.1.2)
 
 - **使用者需求 (User Prompt)**:
-  - 要求將「台灣證券交易所 (TWSE) 官方一般股票 vs ETF 升降單位雙軌權威規定」寫入規則中。
+  - 要求將「每一次修改在沙盒中測試結果，不論是否有問題，都要完整的跟我報告」寫入規則中。
