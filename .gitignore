@@ -1,9 +1,15 @@
-# Build output
-build/CMakeFiles/
-build/CMakeCache.txt
-build/cmake_install.cmake
-build/.ninja_*
-build/build.ninja
-build/*.txt
+# Byte-compiled / optimized / DLL files
 __pycache__/
+*.py[cod]
+*$py.class
 *.log
+shioaji.log
+
+# Build & Dist directories
+build/
+dist/
+*.exe
+
+# Antigravity temporary
+.gemini/
+scratch/

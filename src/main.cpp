@@ -1,90 +1,42 @@
 #include "core/types.hpp"
-#include "data/storage_engine.hpp"
-#include "data/sinopac_cxx_bridge.hpp"
 #include "technical/indicators.hpp"
 #include "strategy/robot_selector.hpp"
 #include "backtest/backtest_engine.hpp"
-#include "notification/telegram_bot.hpp"
-
+#include <cstring>
 #include <iostream>
-#include <iomanip>
-#include <vector>
-#include <string>
-#include <cstdlib>
 
-#ifdef _WIN32
-#include <windows.h>
-#include <shellapi.h>
+#if defined(_WIN32) || defined(_WIN64)
+#define EXPORT_API __declspec(dllexport)
+#else
+#define EXPORT_API __attribute__((visibility("default")))
 #endif
 
-using namespace TaiwanQuant;
+extern "C" {
 
-// C++ 掌管核心架構與計算，調用 Native GUI 視窗載入器 (帶 Shioaji 雙引擎適配)
-void launchNativeDesktopApplication() {
-    #ifdef _WIN32
-    HWND hwndConsole = GetConsoleWindow();
-    if (hwndConsole != NULL) {
-        ShowWindow(hwndConsole, SW_HIDE);
-        FreeConsole();
+// C 介面：執行選股
+EXPORT_API int run_stock_selection(const SmartStock::KBar* kbars, int count, const char* code, const char* name, SmartStock::SelectionResult* outResult) {
+    if (!kbars || count <= 0 || !outResult) return 0;
+
+    std::vector<SmartStock::KBar> data(kbars, kbars + count);
+    auto results = SmartStock::RobotSelector::runSelection(data, code, name);
+    if (!results.empty()) {
+        *outResult = results[0];
+        return 1;
     }
-
-    char cwd[MAX_PATH];
-    GetCurrentDirectoryA(MAX_PATH, cwd);
-    std::string pyScript = std::string(cwd) + "\\src\\gui_host.py";
-    std::string cmdArgs = "pythonw.exe \"" + pyScript + "\"";
-    
-    STARTUPINFOA si;
-    PROCESS_INFORMATION pi;
-    ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
-    ZeroMemory(&pi, sizeof(pi));
-
-    if (CreateProcessA(NULL, (LPSTR)cmdArgs.c_str(), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-        return;
-    }
-
-    std::string pyCmd = "python.exe \"" + pyScript + "\"";
-    if (CreateProcessA(NULL, (LPSTR)pyCmd.c_str(), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-        return;
-    }
-    #endif
-}
-
-#ifdef _WIN32
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    (void)hInstance; (void)hPrevInstance; (void)lpCmdLine; (void)nCmdShow;
-    
-    StorageEngine storage;
-    storage.generateSampleData();
-
-    SinoPacCxxBridge sinopacBridge;
-    sinopacBridge.connect("SHIOAJI_KEY", "SHIOAJI_SECRET");
-
-    launchNativeDesktopApplication();
     return 0;
 }
-#endif
 
-int main(int argc, char* argv[]) {
-    (void)argc; (void)argv;
-    #ifdef _WIN32
-    HWND hwndConsole = GetConsoleWindow();
-    if (hwndConsole != NULL) {
-        ShowWindow(hwndConsole, SW_HIDE);
-        FreeConsole();
-    }
-    #endif
+// C 介面：執行回測
+EXPORT_API void run_backtest_ma(const SmartStock::KBar* kbars, int count, int fastMA, int slowMA, double capital, SmartStock::BacktestResult* outResult) {
+    if (!kbars || count <= 0 || !outResult) return;
 
-    StorageEngine storage;
-    storage.generateSampleData();
+    std::vector<SmartStock::KBar> data(kbars, kbars + count);
+    *outResult = SmartStock::BacktestEngine::runMABacktest(data, fastMA, slowMA, capital);
+}
 
-    SinoPacCxxBridge sinopacBridge;
-    sinopacBridge.connect("SHIOAJI_KEY", "SHIOAJI_SECRET");
+// C 介面：測試 C++ 引擎版本與連線
+EXPORT_API const char* get_engine_version() {
+    return "SmartStock C++ Core Engine v1.0.0 (High Performance Quant)";
+}
 
-    launchNativeDesktopApplication();
-    return 0;
 }

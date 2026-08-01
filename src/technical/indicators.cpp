@@ -3,215 +3,163 @@
 #include <algorithm>
 #include <numeric>
 
-namespace TaiwanQuant {
+namespace SmartStock {
 
-std::vector<double> TechnicalAnalysis::calculateSMA(const std::vector<KBar>& kbars, int period) {
-    std::vector<double> result(kbars.size(), 0.0);
-    if (kbars.size() < static_cast<size_t>(period) || period <= 0) return result;
+std::vector<double> TechnicalEngine::calculateSMA(const std::vector<double>& prices, int period) {
+    size_t n = prices.size();
+    std::vector<double> sma(n, 0.0);
+    if (n < static_cast<size_t>(period) || period <= 0) return sma;
 
     double sum = 0.0;
     for (int i = 0; i < period; ++i) {
-        sum += kbars[i].close;
+        sum += prices[i];
     }
-    result[period - 1] = sum / period;
+    sma[period - 1] = sum / period;
 
-    for (size_t i = period; i < kbars.size(); ++i) {
-        sum += kbars[i].close - kbars[i - period].close;
-        result[i] = sum / period;
+    for (size_t i = period; i < n; ++i) {
+        sum += prices[i] - prices[i - period];
+        sma[i] = sum / period;
     }
-    return result;
+    return sma;
 }
 
-std::vector<double> TechnicalAnalysis::calculateEMA(const std::vector<KBar>& kbars, int period) {
-    std::vector<double> result(kbars.size(), 0.0);
-    if (kbars.empty() || period <= 0) return result;
+std::vector<double> TechnicalEngine::calculateEMA(const std::vector<double>& prices, int period) {
+    size_t n = prices.size();
+    std::vector<double> ema(n, 0.0);
+    if (n < static_cast<size_t>(period) || period <= 0) return ema;
 
     double multiplier = 2.0 / (period + 1.0);
-    result[0] = kbars[0].close;
-
-    for (size_t i = 1; i < kbars.size(); ++i) {
-        result[i] = (kbars[i].close - result[i - 1]) * multiplier + result[i - 1];
+    double sum = 0.0;
+    for (int i = 0; i < period; ++i) {
+        sum += prices[i];
     }
-    return result;
+    ema[period - 1] = sum / period;
+
+    for (size_t i = period; i < n; ++i) {
+        ema[i] = (prices[i] - ema[i - 1]) * multiplier + ema[i - 1];
+    }
+    return ema;
 }
 
-std::vector<double> TechnicalAnalysis::calculateRSI(const std::vector<KBar>& kbars, int period) {
-    std::vector<double> rsi(kbars.size(), 50.0);
-    if (kbars.size() <= static_cast<size_t>(period)) return rsi;
+std::vector<double> TechnicalEngine::calculateRSI(const std::vector<double>& prices, int period) {
+    size_t n = prices.size();
+    std::vector<double> rsi(n, 50.0);
+    if (n <= static_cast<size_t>(period) || period <= 0) return rsi;
 
-    double avgGain = 0.0, avgLoss = 0.0;
+    double avg_gain = 0.0, avg_loss = 0.0;
     for (int i = 1; i <= period; ++i) {
-        double change = kbars[i].close - kbars[i - 1].close;
-        if (change > 0) avgGain += change;
-        else avgLoss += std::abs(change);
+        double change = prices[i] - prices[i - 1];
+        if (change > 0) avg_gain += change;
+        else avg_loss += std::abs(change);
     }
-    avgGain /= period;
-    avgLoss /= period;
+    avg_gain /= period;
+    avg_loss /= period;
 
-    if (avgLoss != 0) {
-        double rs = avgGain / avgLoss;
-        rsi[period] = 100.0 - (100.0 / (1.0 + rs));
-    } else {
-        rsi[period] = 100.0;
-    }
+    if (avg_loss == 0.0) rsi[period] = 100.0;
+    else rsi[period] = 100.0 - (100.0 / (1.0 + avg_gain / avg_loss));
 
-    for (size_t i = period + 1; i < kbars.size(); ++i) {
-        double change = kbars[i].close - kbars[i - 1].close;
+    for (size_t i = period + 1; i < n; ++i) {
+        double change = prices[i] - prices[i - 1];
         double gain = (change > 0) ? change : 0.0;
         double loss = (change < 0) ? std::abs(change) : 0.0;
 
-        avgGain = (avgGain * (period - 1) + gain) / period;
-        avgLoss = (avgLoss * (period - 1) + loss) / period;
+        avg_gain = (avg_gain * (period - 1) + gain) / period;
+        avg_loss = (avg_loss * (period - 1) + loss) / period;
 
-        if (avgLoss != 0) {
-            double rs = avgGain / avgLoss;
-            rsi[i] = 100.0 - (100.0 / (1.0 + rs));
-        } else {
-            rsi[i] = 100.0;
-        }
+        if (avg_loss == 0.0) rsi[i] = 100.0;
+        else rsi[i] = 100.0 - (100.0 / (1.0 + avg_gain / avg_loss));
     }
     return rsi;
 }
 
-TechnicalAnalysis::MACDResult TechnicalAnalysis::calculateMACD(const std::vector<KBar>& kbars, int fastPeriod, int slowPeriod, int signalPeriod) {
-    MACDResult res;
-    size_t n = kbars.size();
-    res.dif.resize(n, 0.0);
-    res.dea.resize(n, 0.0);
-    res.histogram.resize(n, 0.0);
+void TechnicalEngine::calculateMACD(const std::vector<double>& prices,
+                                    std::vector<double>& outMACD,
+                                    std::vector<double>& outSignal,
+                                    std::vector<double>& outHist) {
+    size_t n = prices.size();
+    outMACD.assign(n, 0.0);
+    outSignal.assign(n, 0.0);
+    outHist.assign(n, 0.0);
 
-    auto emaFast = calculateEMA(kbars, fastPeriod);
-    auto emaSlow = calculateEMA(kbars, slowPeriod);
+    if (n < 26) return;
+
+    std::vector<double> ema12 = calculateEMA(prices, 12);
+    std::vector<double> ema26 = calculateEMA(prices, 26);
 
     for (size_t i = 0; i < n; ++i) {
-        res.dif[i] = emaFast[i] - emaSlow[i];
+        outMACD[i] = ema12[i] - ema26[i];
     }
+    outSignal = calculateEMA(outMACD, 9);
 
-    // 計算 DEA (DIF 的 EMA)
-    double multiplier = 2.0 / (signalPeriod + 1.0);
-    res.dea[0] = res.dif[0];
-    for (size_t i = 1; i < n; ++i) {
-        res.dea[i] = (res.dif[i] - res.dea[i - 1]) * multiplier + res.dea[i - 1];
-        res.histogram[i] = (res.dif[i] - res.dea[i]) * 2.0;
+    for (size_t i = 0; i < n; ++i) {
+        outHist[i] = outMACD[i] - outSignal[i];
     }
-    return res;
 }
 
-TechnicalAnalysis::KDResult TechnicalAnalysis::calculateKD(const std::vector<KBar>& kbars, int period) {
-    KDResult res;
+void TechnicalEngine::calculateKD(const std::vector<KBar>& kbars,
+                                  std::vector<double>& outK,
+                                  std::vector<double>& outD) {
     size_t n = kbars.size();
-    res.k.resize(n, 50.0);
-    res.d.resize(n, 50.0);
+    outK.assign(n, 50.0);
+    outD.assign(n, 50.0);
 
-    if (n < static_cast<size_t>(period)) return res;
+    if (n < 9) return;
 
-    for (size_t i = period - 1; i < n; ++i) {
-        double highest = kbars[i].high;
-        double lowest = kbars[i].low;
-        for (size_t j = i - period + 1; j <= i; ++j) {
-            highest = std::max(highest, kbars[j].high);
-            lowest = std::min(lowest, kbars[j].low);
+    double lastK = 50.0;
+    double lastD = 50.0;
+
+    for (size_t i = 8; i < n; ++i) {
+        double highest_high = kbars[i].high;
+        double lowest_low = kbars[i].low;
+
+        for (size_t j = i - 8; j <= i; ++j) {
+            highest_high = std::max(highest_high, kbars[j].high);
+            lowest_low = std::min(lowest_low, kbars[j].low);
         }
 
         double rsv = 50.0;
-        if (highest != lowest) {
-            rsv = (kbars[i].close - lowest) / (highest - lowest) * 100.0;
+        if (highest_high != lowest_low) {
+            rsv = (kbars[i].close - lowest_low) / (highest_high - lowest_low) * 100.0;
         }
 
-        double prevK = (i > 0) ? res.k[i - 1] : 50.0;
-        double prevD = (i > 0) ? res.d[i - 1] : 50.0;
+        lastK = (2.0 / 3.0) * lastK + (1.0 / 3.0) * rsv;
+        lastD = (2.0 / 3.0) * lastD + (1.0 / 3.0) * lastK;
 
-        res.k[i] = (2.0 / 3.0) * prevK + (1.0 / 3.0) * rsv;
-        res.d[i] = (2.0 / 3.0) * prevD + (1.0 / 3.0) * res.k[i];
+        outK[i] = lastK;
+        outD[i] = lastD;
     }
-    return res;
 }
 
-TechnicalAnalysis::BBResult TechnicalAnalysis::calculateBollingerBands(const std::vector<KBar>& kbars, int period, double multiplier) {
-    BBResult res;
-    size_t n = kbars.size();
-    res.upper.resize(n, 0.0);
-    res.middle.resize(n, 0.0);
-    res.lower.resize(n, 0.0);
+std::string TechnicalEngine::detectPattern(const std::vector<KBar>& kbars) {
+    if (kbars.size() < 2) return "無明顯型態";
 
-    auto sma = calculateSMA(kbars, period);
-    res.middle = sma;
+    const auto& prev = kbars[kbars.size() - 2];
+    const auto& curr = kbars.back();
 
-    for (size_t i = period - 1; i < n; ++i) {
-        double mean = sma[i];
-        double sumSq = 0.0;
-        for (size_t j = i - period + 1; j <= i; ++j) {
-            double diff = kbars[j].close - mean;
-            sumSq += diff * diff;
-        }
-        double stdDev = std::sqrt(sumSq / period);
-        res.upper[i] = mean + multiplier * stdDev;
-        res.lower[i] = mean - multiplier * stdDev;
-    }
-    return res;
-}
+    bool prev_bear = prev.close < prev.open;
+    bool curr_bull = curr.close > curr.open;
 
-std::string TechnicalAnalysis::detectPattern(const std::vector<KBar>& kbars, size_t index) {
-    if (index == 0 || index >= kbars.size()) return "標準K線";
-
-    const auto& curr = kbars[index];
-    const auto& prev = kbars[index - 1];
-
-    double body = std::abs(curr.close - curr.open);
-    double range = curr.high - curr.low;
-    double upperShadow = curr.high - std::max(curr.open, curr.close);
-    double lowerShadow = std::min(curr.open, curr.close) - curr.low;
-
-    // 錘子線 Hammer
-    if (range > 0 && lowerShadow >= 2.0 * body && upperShadow <= 0.2 * body) {
-        return "錘子線 (Hammer 止跌看漲)";
-    }
     // 看漲吞噬 Bullish Engulfing
-    if (prev.close < prev.open && curr.close > curr.open &&
-        curr.close >= prev.open && curr.open <= prev.close) {
-        return "看漲吞噬 (Bullish Engulfing)";
-    }
-    // 看跌吞噬 Bearish Engulfing
-    if (prev.close > prev.open && curr.close < curr.open &&
-        curr.open >= prev.close && curr.close <= prev.open) {
-        return "看跌吞噬 (Bearish Engulfing)";
-    }
-    // 多方砲 / 強勢紅K
-    if (curr.close > curr.open && (curr.close - curr.open) / curr.open >= 0.04) {
-        return "長紅突破 (Long White Candle)";
+    if (prev_bear && curr_bull && curr.open <= prev.close && curr.close >= prev.open) {
+        return "🔥 看漲吞噬 (Bullish Engulfing)";
     }
 
-    return "常規型態";
+    // 錘子強撐 Hammer
+    double body = std::abs(curr.close - curr.open);
+    double lower_shadow = std::min(curr.open, curr.close) - curr.low;
+    double upper_shadow = curr.high - std::max(curr.open, curr.close);
+
+    if (lower_shadow >= 2.0 * body && upper_shadow <= body * 0.5 && body > 0) {
+        return "🔨 錘子線 (Hammer Support)";
+    }
+
+    // 長紅突破 Long Bullish
+    double pct = (curr.close - curr.open) / curr.open * 100.0;
+    if (pct >= 3.5) {
+        return "🚀 長紅大陽線 (Long Bullish Breakout)";
+    }
+
+    return "趨勢整理 (Consolidating)";
 }
 
-TechnicalIndicators TechnicalAnalysis::getLatestIndicators(const std::vector<KBar>& kbars) {
-    TechnicalIndicators ti;
-    if (kbars.empty()) return ti;
-
-    size_t n = kbars.size();
-    auto ma5 = calculateSMA(kbars, 5);
-    auto ma20 = calculateSMA(kbars, 20);
-    auto ma60 = calculateSMA(kbars, 60);
-    auto rsi = calculateRSI(kbars, 14);
-    auto macd = calculateMACD(kbars);
-    auto kd = calculateKD(kbars);
-    auto bb = calculateBollingerBands(kbars);
-
-    ti.ma5 = ma5[n - 1];
-    ti.ma20 = ma20[n - 1];
-    ti.ma60 = ma60[n - 1];
-    ti.rsi14 = rsi[n - 1];
-    ti.macdDIF = macd.dif[n - 1];
-    ti.macdDEA = macd.dea[n - 1];
-    ti.macdHist = macd.histogram[n - 1];
-    ti.kdK = kd.k[n - 1];
-    ti.kdD = kd.d[n - 1];
-    ti.bbUpper = bb.upper[n - 1];
-    ti.bbMiddle = bb.middle[n - 1];
-    ti.bbLower = bb.lower[n - 1];
-    ti.patternName = detectPattern(kbars, n - 1);
-
-    return ti;
-}
-
-} // namespace TaiwanQuant
+} // namespace SmartStock

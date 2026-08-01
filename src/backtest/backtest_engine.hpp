@@ -1,24 +1,13 @@
-#ifndef TAIWAN_QUANT_BACKTEST_ENGINE_HPP
-#define TAIWAN_QUANT_BACKTEST_ENGINE_HPP
-
+#pragma once
 #include "../core/types.hpp"
-#include "../data/storage_engine.hpp"
-#include <string>
 #include <vector>
 
-namespace TaiwanQuant {
+namespace SmartStock {
 
 class BacktestEngine {
 public:
-    explicit BacktestEngine(const StorageEngine& storage);
-
-    // 執行事件驅動策略回測
-    BacktestResult runBacktest(const std::string& symbol, double initialCapital = 1000000.0);
-
-private:
-    const StorageEngine& storage_;
+    // 執行 MA 雙均線穿透交叉回測策略
+    static BacktestResult runMABacktest(const std::vector<KBar>& history, int fastPeriod = 5, int slowPeriod = 20, double initialCapital = 1000000.0);
 };
 
-} // namespace TaiwanQuant
-
-#endif // TAIWAN_QUANT_BACKTEST_ENGINE_HPP
+} // namespace SmartStock

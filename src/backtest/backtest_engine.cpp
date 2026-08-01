@@ -1,104 +1,91 @@
 #include "backtest_engine.hpp"
 #include "../technical/indicators.hpp"
 #include <cmath>
-#include <numeric>
 #include <algorithm>
 
-namespace TaiwanQuant {
+namespace SmartStock {
 
-BacktestEngine::BacktestEngine(const StorageEngine& storage)
-    : storage_(storage) {}
+BacktestResult BacktestEngine::runMABacktest(const std::vector<KBar>& history, int fastPeriod, int slowPeriod, double initialCapital) {
+    BacktestResult res = {0.0, 0.0, 0.0, 0.0, 0, 0, 0};
+    if (history.size() < static_cast<size_t>(slowPeriod + 1)) return res;
 
-BacktestResult BacktestEngine::runBacktest(const std::string& symbol, double initialCapital) {
-    BacktestResult res;
-    res.strategyName = "C++ 智慧機器人雙均線與 KD 綜合突破策略";
-    
-    auto kbars = storage_.getKBars(symbol, PeriodType::DAILY, 500);
-    if (kbars.size() < 30) {
-        return res;
+    std::vector<double> closes;
+    for (const auto& kb : history) {
+        closes.push_back(kb.close);
     }
+
+    std::vector<double> fastMA = TechnicalEngine::calculateSMA(closes, fastPeriod);
+    std::vector<double> slowMA = TechnicalEngine::calculateSMA(closes, slowPeriod);
 
     double capital = initialCapital;
-    double maxCapital = initialCapital;
+    double maxCapital = capital;
     double maxDrawdown = 0.0;
-
     bool inPosition = false;
-    double buyPrice = 0.0;
-    int positionShares = 0;
+    double entryPrice = 0.0;
+    int shares = 0;
 
-    auto ma5 = TechnicalAnalysis::calculateSMA(kbars, 5);
-    auto ma20 = TechnicalAnalysis::calculateSMA(kbars, 20);
-    auto kd = TechnicalAnalysis::calculateKD(kbars);
+    std::vector<double> returnsList;
 
-    std::vector<double> dailyReturns;
-    double grossProfit = 0.0;
-    double grossLoss = 0.0;
-
-    for (size_t i = 20; i < kbars.size(); ++i) {
-        double price = kbars[i].close;
-        double prevCapital = capital;
-
-        // 進場條件: MA5 上穿 MA20 且 K > D (黃金交叉)
-        bool buyCondition = (ma5[i] > ma20[i] && ma5[i - 1] <= ma20[i - 1] && kd.k[i] > kd.d[i]);
-        // 出場條件: MA5 下穿 MA20 或 K < D (死亡交叉)
-        bool sellCondition = (ma5[i] < ma20[i] && ma5[i - 1] >= ma20[i - 1]);
-
-        if (!inPosition && buyCondition) {
-            inPosition = true;
-            buyPrice = price;
-            positionShares = static_cast<int>(capital / (price * 1.001425)); // 考慮手續費
-            capital -= positionShares * price * 1.001425;
-
-            Signal sig{symbol, symbol, MarketType::TWSE_STOCK, kbars[i].timestamp, "BUY", 85.0, "均線黃金交叉進場", price};
-            res.executedTrades.push_back(sig);
-        } else if (inPosition && (sellCondition || i == kbars.size() - 1)) {
-            inPosition = false;
-            double sellProceeds = positionShares * price * (1.0 - 0.001425 - 0.003); // 考慮手續費與證交稅
-            capital += sellProceeds;
-            double pnl = sellProceeds - (positionShares * buyPrice * 1.001425);
-
-            res.totalTrades++;
-            if (pnl > 0) {
-                res.winningTrades++;
-                grossProfit += pnl;
-            } else {
-                res.losingTrades++;
-                grossLoss += std::abs(pnl);
+    for (size_t i = slowPeriod; i < history.size(); ++i) {
+        // 黃金交叉買入 Golden Cross
+        if (!inPosition && fastMA[i - 1] <= slowMA[i - 1] && fastMA[i] > slowMA[i]) {
+            entryPrice = history[i].close;
+            shares = static_cast<int>(capital / (entryPrice * 1000.0)) * 1000;
+            if (shares > 0) {
+                inPosition = true;
             }
+        }
+        // 死亡交叉賣出 Death Cross
+        else if (inPosition && fastMA[i - 1] >= slowMA[i - 1] && fastMA[i] < slowMA[i]) {
+            double exitPrice = history[i].close;
+            double pnl = (exitPrice - entryPrice) * shares;
+            capital += pnl;
+            res.total_trades++;
 
-            Signal sig{symbol, symbol, MarketType::TWSE_STOCK, kbars[i].timestamp, "SELL", 35.0, "均線死亡交叉出場", price};
-            res.executedTrades.push_back(sig);
+            double ret = (exitPrice - entryPrice) / entryPrice;
+            returnsList.push_back(ret);
+
+            if (pnl > 0) res.winning_trades++;
+            else res.losing_trades++;
+
+            inPosition = false;
+            shares = 0;
         }
 
-        double currentAsset = capital + (inPosition ? positionShares * price : 0.0);
-        maxCapital = std::max(maxCapital, currentAsset);
-        double drawdown = (maxCapital - currentAsset) / maxCapital * 100.0;
-        maxDrawdown = std::max(maxDrawdown, drawdown);
-
-        if (prevCapital > 0) {
-            dailyReturns.push_back((currentAsset - prevCapital) / prevCapital);
+        double currentAsset = capital;
+        if (inPosition) {
+            currentAsset = capital + (history[i].close - entryPrice) * shares;
+        }
+        if (currentAsset > maxCapital) {
+            maxCapital = currentAsset;
+        }
+        double dd = (maxCapital - currentAsset) / maxCapital * 100.0;
+        if (dd > maxDrawdown) {
+            maxDrawdown = dd;
         }
     }
 
-    double finalAsset = capital + (inPosition ? positionShares * kbars.back().close : 0.0);
-    res.totalReturn = (finalAsset - initialCapital) / initialCapital * 100.0;
-    res.winRate = (res.totalTrades > 0) ? (static_cast<double>(res.winningTrades) / res.totalTrades * 100.0) : 0.0;
-    res.maxDrawdown = maxDrawdown;
-    res.profitFactor = (grossLoss > 0) ? (grossProfit / grossLoss) : (grossProfit > 0 ? 99.0 : 0.0);
+    // 計算總表現
+    res.total_return_pct = (capital - initialCapital) / initialCapital * 100.0;
+    res.win_rate = (res.total_trades > 0) ? (static_cast<double>(res.winning_trades) / res.total_trades * 100.0) : 0.0;
+    res.max_drawdown_pct = maxDrawdown;
 
-    // 計算夏普比率 Sharpe Ratio
-    if (!dailyReturns.empty()) {
-        double meanReturn = std::accumulate(dailyReturns.begin(), dailyReturns.end(), 0.0) / dailyReturns.size();
-        double variance = 0.0;
-        for (double r : dailyReturns) {
-            variance += (r - meanReturn) * (r - meanReturn);
+    // 計算夏普率 (Sharpe Ratio)
+    if (!returnsList.empty()) {
+        double mean = 0.0;
+        for (double r : returnsList) mean += r;
+        mean /= returnsList.size();
+
+        double sq_sum = 0.0;
+        for (double r : returnsList) sq_sum += (r - mean) * (r - mean);
+        double stddev = std::sqrt(sq_sum / returnsList.size());
+
+        if (stddev > 0) {
+            res.sharpe_ratio = (mean / stddev) * std::sqrt(252.0); // 年化夏普率
         }
-        double stdDev = std::sqrt(variance / dailyReturns.size());
-        res.sharpeRatio = (stdDev > 0) ? (meanReturn / stdDev * std::sqrt(252.0)) : 0.0;
     }
-    res.annualizedReturn = res.totalReturn * (252.0 / std::max(static_cast<size_t>(1), kbars.size()));
 
     return res;
 }
 
-} // namespace TaiwanQuant
+} // namespace SmartStock

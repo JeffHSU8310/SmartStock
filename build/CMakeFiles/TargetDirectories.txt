@@ -1,3 +1,0 @@
-E:/Rot/build/CMakeFiles/TaiwanSmartQuant.dir
-E:/Rot/build/CMakeFiles/edit_cache.dir
-E:/Rot/build/CMakeFiles/rebuild_cache.dir
