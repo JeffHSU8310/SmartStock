@@ -20,7 +20,7 @@ class DateAxisItem(pg.AxisItem):
         return strings
 
 class CandlestickItem(pg.GraphicsObject):
-    """pyqtgraph 原生紅綠 K 棒 (Candlestick Item)"""
+    """pyqtgraph 原生紅綠 K 棒 (修復 open == close 橫線厚度與影線) (圖片 5 & 6 需求)"""
     def __init__(self, data):
         pg.GraphicsObject.__init__(self)
         self.data = data  # list of (t, open, close, min, max)
@@ -30,9 +30,9 @@ class CandlestickItem(pg.GraphicsObject):
         self.picture = QtGui.QPicture()
         p = QtGui.QPainter(self.picture)
         
-        pen_red = pg.mkPen('#FF3B69', width=1.2)
+        pen_red = pg.mkPen('#FF3B69', width=1.5)
         brush_red = pg.mkBrush('#FF3B69')
-        pen_green = pg.mkPen('#00E676', width=1.2)
+        pen_green = pg.mkPen('#00E676', width=1.5)
         brush_green = pg.mkBrush('#00E676')
 
         w = 0.35
@@ -44,8 +44,15 @@ class CandlestickItem(pg.GraphicsObject):
                 p.setPen(pen_green)
                 p.setBrush(brush_green)
 
+            # 畫上下影線
             p.drawLine(QtCore.QPointF(t, low_p), QtCore.QPointF(t, high_p))
-            p.drawRect(QtCore.QRectF(t - w, open_p, w * 2, close_p - open_p))
+
+            # 修復一字線/十字線 (open == close) 實體厚度，賦予標準 0.3 厚度視覺
+            height = close_p - open_p
+            if abs(height) < 0.05:
+                height = 0.25 if close_p >= open_p else -0.25
+
+            p.drawRect(QtCore.QRectF(t - w, open_p, w * 2, height))
 
         p.end()
 
@@ -56,13 +63,15 @@ class CandlestickItem(pg.GraphicsObject):
         return QtCore.QRectF(self.picture.boundingRect())
 
 class NativeCandlestickChart(QtWidgets.QWidget):
-    """Pure Native Qt6 pyqtgraph K 線圖 (支援 DateAxis 時間軸與滑鼠懸停 K棒 資訊高亮)"""
-    hover_kbar_signal = QtCore.Signal(dict) # 發送當前懸停的 K棒 數據
+    """Pure Native Qt6 pyqtgraph K 線圖 (支援切換商品完全重置、DateAxis 與均線趨勢箭頭)"""
+    hover_kbar_signal = QtCore.Signal(dict) # 發送當前懸停的 K棒 數據與 MA 趨勢
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.kbars_data = []
         self.dates = []
+        self.ma5_vals = []
+        self.ma20_vals = []
 
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -90,18 +99,25 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.p2.setMaximumHeight(130)
         self.p2.setXLink(self.p1)
 
-        # 懸停動態十字線 (Crosshair Cursor)
+        # 懸停動態十字線
         self.vLine = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('#00E5FF', width=1, style=QtCore.Qt.DashLine))
         self.hLine = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen('#00E5FF', width=1, style=QtCore.Qt.DashLine))
         self.p1.addItem(self.vLine, ignoreBounds=True)
         self.p1.addItem(self.hLine, ignoreBounds=True)
 
-        # 綁定游標跟隨與懸停事件 (圖片 3 需求實作)
+        # 綁定游標懸停事件
         self.win.scene().sigMouseMoved.connect(self.on_mouse_moved)
 
     def set_data(self, kbars: List[Dict]):
-        """填入 K 棒數據並即時重建 DateAxis 時間軸 (圖片 4 需求實作)"""
+        """切換商品時 100% 重置數據與時間軸 DateAxisItem (徹底修復切換商品資訊問題)"""
+        self.kbars_data = []
+        self.dates = []
+        self.ma5_vals = []
+        self.ma20_vals = []
+
         if not kbars:
+            self.p1.clear()
+            self.p2.clear()
             return
 
         self.kbars_data = kbars
@@ -110,7 +126,7 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.p1.clear()
         self.p2.clear()
 
-        # 重置時間軸 (DateAxisItem)
+        # 重建時間軸 DateAxisItem
         date_axis_main = DateAxisItem(self.dates, orientation='bottom')
         date_axis_sub = DateAxisItem(self.dates, orientation='bottom')
 
@@ -134,14 +150,14 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         item = CandlestickItem(chart_data)
         self.p1.addItem(item)
 
-        # 2. 畫 MA5 (黃) 與 MA20 (紫)
+        # 2. 計算 MA5 (黃) 與 MA20 (紫) 並傳遞趨勢箭頭
         closes_arr = np.array(closes)
         if len(closes_arr) >= 5:
-            ma5 = np.convolve(closes_arr, np.ones(5)/5, mode='valid')
-            self.p1.plot(np.arange(4, len(closes_arr)), ma5, pen=pg.mkPen('#FFD700', width=1.5), name='MA5')
+            self.ma5_vals = np.convolve(closes_arr, np.ones(5)/5, mode='valid').tolist()
+            self.p1.plot(np.arange(4, len(closes_arr)), self.ma5_vals, pen=pg.mkPen('#FFD700', width=1.5), name='MA5')
         if len(closes_arr) >= 20:
-            ma20 = np.convolve(closes_arr, np.ones(20)/20, mode='valid')
-            self.p1.plot(np.arange(19, len(closes_arr)), ma20, pen=pg.mkPen('#E040FB', width=1.5), name='MA20')
+            self.ma20_vals = np.convolve(closes_arr, np.ones(20)/20, mode='valid').tolist()
+            self.p1.plot(np.arange(19, len(closes_arr)), self.ma20_vals, pen=pg.mkPen('#E040FB', width=1.5), name='MA20')
 
         # 3. 畫成交量柱狀圖 (Volume Bar)
         x_indices = np.arange(len(volumes))
@@ -149,8 +165,12 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         bargraph = pg.BarGraphItem(x=x_indices, height=volumes, width=0.6, brushes=colors, pens=colors)
         self.p2.addItem(bargraph)
 
+        # 切換商品瞬間，立即廣播第一筆懸停資訊 (以最後一根 K 棒為準)
+        if self.kbars_data:
+            self.emit_hover_info(len(self.kbars_data) - 1)
+
     def on_mouse_moved(self, pos):
-        """游標懸停事件：即時發送該根 K 線之開高低收、漲跌與成交量 (圖片 3 需求實作)"""
+        """游標懸停事件：即時發送該根 K 線之開高低收、漲跌與 MA 趨勢箭頭 (圖片 2 & 3 需求)"""
         if not self.kbars_data:
             return
 
@@ -160,11 +180,36 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         if 0 <= idx < len(self.kbars_data):
             self.vLine.setPos(mousePoint.x())
             self.hLine.setPos(mousePoint.y())
+            self.emit_hover_info(idx)
 
+    def emit_hover_info(self, idx: int):
+        if 0 <= idx < len(self.kbars_data):
             kb = self.kbars_data[idx]
             prev_close = self.kbars_data[idx - 1]['close'] if idx > 0 else kb['open']
             change = kb['close'] - prev_close
             pct_change = (change / prev_close * 100.0) if prev_close != 0 else 0.0
+
+            # 計算 MA5 趨勢箭頭 (圖片 2 需求)
+            ma5_val = None
+            ma5_arrow = "➡️"
+            ma5_idx = idx - 4
+            if 0 <= ma5_idx < len(self.ma5_vals):
+                ma5_val = self.ma5_vals[ma5_idx]
+                if ma5_idx > 0:
+                    prev_ma5 = self.ma5_vals[ma5_idx - 1]
+                    if ma5_val > prev_ma5: ma5_arrow = "⬆️"
+                    elif ma5_val < prev_ma5: ma5_arrow = "⬇️"
+
+            # 計算 MA20 趨勢箭頭 (圖片 2 需求)
+            ma20_val = None
+            ma20_arrow = "➡️"
+            ma20_idx = idx - 19
+            if 0 <= ma20_idx < len(self.ma20_vals):
+                ma20_val = self.ma20_vals[ma20_idx]
+                if ma20_idx > 0:
+                    prev_ma20 = self.ma20_vals[ma20_idx - 1]
+                    if ma20_val > prev_ma20: ma20_arrow = "⬆️"
+                    elif ma20_val < prev_ma20: ma20_arrow = "⬇️"
 
             info = {
                 "datetime": kb['datetime'],
@@ -174,6 +219,10 @@ class NativeCandlestickChart(QtWidgets.QWidget):
                 "close": kb['close'],
                 "change": change,
                 "pct_change": pct_change,
-                "volume": kb['volume']
+                "volume": kb['volume'],
+                "ma5": ma5_val,
+                "ma5_arrow": ma5_arrow,
+                "ma20": ma20_val,
+                "ma20_arrow": ma20_arrow
             }
             self.hover_kbar_signal.emit(info)
