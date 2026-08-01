@@ -32,10 +32,10 @@ except ImportError:
     from utils.config_manager import ConfigManager
 
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.21)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.22)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.21 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.22 (Pure Native Qt6)")
         self.resize(1520, 940)
 
         self.current_code = "2330"
@@ -186,7 +186,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         # 頂部 Header Banner
         header = QtWidgets.QHBoxLayout()
-        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.19 (Pure Native Qt6)")
+        title_label = QtWidgets.QLabel("📈 SmartStock 智慧型量化交易與選股平台 v1.0.22 (Pure Native Qt6)")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #00E5FF;")
         header.addWidget(title_label)
 
@@ -466,7 +466,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.on_stock_changed("2330", "台積電")
 
     def on_stock_changed(self, code: str, name: str = ""):
-        """自選股點擊連動：未登入保持空白，登入後載入全真數據"""
+        """自選股點擊連動：未登入保持空白，登入後載入全真數據 (強行刷新商品標頭與動態資訊欄)"""
         self.current_code = code
         
         real_name = self.engine.get_symbol_name(code)
@@ -477,14 +477,33 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         else:
             self.current_name = real_name
 
+        # 1. 強行更新標題
         self.lbl_stock_title.setText(f"{code} {self.current_name} — [{self.current_ktype} K 線圖]")
         
-        # 1. 抓取該商品最新重採樣 KBars (未登入傳回 []，畫布自動空白)
+        # 2. 抓取該商品最新重採樣 KBars (未登入傳回 []，畫布自動空白)
         kbars = self.engine.get_kbars(code=code, ktype=self.current_ktype_code)
         self.chart_widget.set_data(kbars)
 
-        # 2. 刷新五檔與下單欄
-        latest_price = kbars[-1]['close'] if kbars else 2425.0
+        # 3. ★ 強行重置懸停動態資訊列，100% 徹底消除舊股票殘留數據 ★
+        if kbars:
+            last_kb = kbars[-1]
+            chg = last_kb['close'] - last_kb['open']
+            pct = (chg / last_kb['open'] * 100.0) if last_kb['open'] != 0 else 0.0
+            color = "#FF3B69" if chg >= 0 else "#00E676"
+            arrow = "▲" if chg >= 0 else "▼"
+            init_text = (
+                f"<span style='color:#00E5FF; font-weight:bold;'>{code} {self.current_name}</span> | "
+                f"時間: {last_kb['datetime']} | "
+                f"開: {last_kb['open']:.2f} | 高: {last_kb['high']:.2f} | 低: {last_kb['low']:.2f} | 收: {last_kb['close']:.2f} | "
+                f"漲跌: <span style='color:{color}; font-weight:bold;'>{arrow} {abs(chg):.2f} ({arrow} {abs(pct):.2f}%)</span> | "
+                f"量: {last_kb['volume']:,} 張"
+            )
+            self.lbl_hover_info.setText(init_text)
+        else:
+            self.lbl_hover_info.setText("💡 尚未連線 API：請點擊右上角「登入永豐金 API」開始載入全真行情與 K 線圖")
+
+        # 4. 刷新五檔與下單欄
+        latest_price = kbars[-1]['close'] if kbars else (42650.0 if "TX" in code else 2425.0)
         self.five_bids_widget.set_mock_bids(self.current_code, latest_price)
         self.order_toolbar_widget.set_symbol(code, latest_price)
 
@@ -508,7 +527,6 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         """游標懸停 K棒 即時動態高亮資訊 (完全對齊用戶截圖樣式)"""
         color = "#FF3B69" if info['change'] >= 0 else "#00E676"
         arrow = "▲" if info['change'] >= 0 else "▼"
-        sign = "+" if info['change'] >= 0 else ""
 
         text = (
             f"<span style='color:#00E5FF; font-weight:bold;'>{self.current_code} {self.current_name}</span> | "
