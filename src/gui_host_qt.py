@@ -50,10 +50,10 @@ class ClickableIndexBanner(QtWidgets.QLabel):
         super().mousePressEvent(event)
 
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.39)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.40)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.39 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.40 (Pure Native Qt6)")
         self.resize(1520, 940)
 
         self.current_code = "2330"
@@ -244,7 +244,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         # 頂部 Header Banner
         header = QtWidgets.QHBoxLayout()
-        title_label = QtWidgets.QLabel("📈 SmartStock 量化交易 v1.0.39")
+        title_label = QtWidgets.QLabel("📈 SmartStock 量化交易 v1.0.40")
         title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #00E5FF;")
         header.addWidget(title_label)
 

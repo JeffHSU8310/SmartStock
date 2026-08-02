@@ -5,9 +5,9 @@ import pandas as pd
 from typing import List, Dict, Any
 
 try:
-    from src.widgets.indicator_settings_dialog import DEFAULT_INDICATOR_CONFIG
+    from src.widgets.indicator_settings_dialog import DEFAULT_INDICATOR_CONFIG, load_indicator_config_from_json
 except ImportError:
-    from widgets.indicator_settings_dialog import DEFAULT_INDICATOR_CONFIG
+    from widgets.indicator_settings_dialog import DEFAULT_INDICATOR_CONFIG, load_indicator_config_from_json
 
 LINE_STYLES_MAP = {
     "實線 (SolidLine)": QtCore.Qt.SolidLine,
@@ -89,7 +89,7 @@ def get_trend_symbol(val: float, prev_val: float) -> str:
         return " →"
 
 class NativeCandlestickChart(QtWidgets.QWidget):
-    """Pure Native Qt6 pyqtgraph 旗艦級 3 層 K 線圖 (支援主副圖左上角獨立資訊列、動態斜率趨勢符號 ↗/↘/→ 與自由參數)"""
+    """Pure Native Qt6 pyqtgraph 旗艦級 3 層 K 線圖 (支援主副圖左上角獨立 Overlay 釘選、趨勢符號 ↗/↘/→、布林獨立 4 上下限與 JSON 設定儲存)"""
     hover_kbar_signal = QtCore.Signal(dict)
 
     def __init__(self, parent=None):
@@ -97,9 +97,11 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.kbars_data = []
         self.dates = []
         self.ref_price = 0.0  # ★ 當日官方參考價 (Reference Price) ★
-        self.indicator_config = dict(DEFAULT_INDICATOR_CONFIG)
+        
+        # 啟動時自動從 config/indicator_config.json 讀取持久化設定
+        self.indicator_config = load_indicator_config_from_json()
 
-        # 儲存計算結果 (用於 hover 顯示與斜率計算)
+        # 儲存計算結果
         self.computed_ma = []       # list of dict: {name, period, color, vals}
         self.computed_bb = {}       # {mid, u1, l1, u2, l2}
         self.computed_sub1 = {}     # {type, data_dict}
@@ -127,12 +129,12 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.p1.getAxis('left').setPen('#2A2E39')
         self.chart_splitter.addWidget(self.win1)
 
-        # 2. 副圖一畫布 (Plot 2: Sub-Chart 1 - Volume / MACD / KDJ / RSI etc.)
+        # 2. 副圖一畫布 (Plot 2: Sub-Chart 1 - 預設永遠為成交量 Volume)
         self.win2 = pg.GraphicsLayoutWidget()
         self.win2.setBackground('#121418')
         self.p2 = self.win2.addPlot(row=0, col=0)
         self.p2.showGrid(x=True, y=True, alpha=0.15)
-        self.p2.setLabel('left', 'Sub 1', color='#A0AAB8')
+        self.p2.setLabel('left', '成交量', color='#A0AAB8')
         self.p2.setXLink(self.p1)
         self.chart_splitter.addWidget(self.win2)
 
@@ -169,8 +171,25 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.p2.addItem(self.overlay_p2, ignoreBounds=True)
         self.p3.addItem(self.overlay_p3, ignoreBounds=True)
 
+        # 連結 ViewBox 縮放滑動事件，確保 Overlay 100% 釘在畫布左上角
+        self.p1.vb.sigRangeChanged.connect(self._update_overlay_positions)
+        self.p2.vb.sigRangeChanged.connect(self._update_overlay_positions)
+        self.p3.vb.sigRangeChanged.connect(self._update_overlay_positions)
+
         # 綁定游標懸停事件 (實現精準吸附 K 棒)
         self.win1.scene().sigMouseMoved.connect(self.on_mouse_moved)
+
+    def _update_overlay_positions(self):
+        """縮放或滑動時 100% 確保 Overlay 釘選在畫布頂角"""
+        if hasattr(self, 'overlay_p1') and self.p1:
+            r1 = self.p1.vb.viewRect()
+            self.overlay_p1.setPos(r1.left(), r1.top())
+        if hasattr(self, 'overlay_p2') and self.p2:
+            r2 = self.p2.vb.viewRect()
+            self.overlay_p2.setPos(r2.left(), r2.top())
+        if hasattr(self, 'overlay_p3') and self.p3:
+            r3 = self.p3.vb.viewRect()
+            self.overlay_p3.setPos(r3.left(), r3.top())
 
     def set_ref_price(self, ref_price: float):
         """設定當日官方參考價 (Reference Price)，用於最新 K 棒漲跌計算"""
@@ -277,20 +296,22 @@ class NativeCandlestickChart(QtWidgets.QWidget):
                         "vals": vals
                     })
 
-        # 3. 計算與繪製布林通道 (Bollinger Bands - 雙層上下限)
+        # 3. 計算與繪製布林通道 (Bollinger Bands - 支援 4 條獨立 Upper1, Lower1, Upper2, Lower2 上下限)
         if self.indicator_config.get("bb_enabled", True):
             bb_period = self.indicator_config.get("bb_period", 20)
-            bb_k1 = self.indicator_config.get("bb_k1", 1.0)
-            bb_k2 = self.indicator_config.get("bb_k2", 2.0)
+            bb_u1_k = self.indicator_config.get("bb_u1_k", self.indicator_config.get("bb_k1", 1.0))
+            bb_l1_k = self.indicator_config.get("bb_l1_k", self.indicator_config.get("bb_k1", 1.0))
+            bb_u2_k = self.indicator_config.get("bb_u2_k", self.indicator_config.get("bb_k2", 2.0))
+            bb_l2_k = self.indicator_config.get("bb_l2_k", self.indicator_config.get("bb_k2", 2.0))
 
             if len(s_close) >= bb_period:
                 mid_ser = s_close.rolling(window=bb_period).mean()
                 std_ser = s_close.rolling(window=bb_period).std()
 
-                u1_ser = mid_ser + bb_k1 * std_ser
-                l1_ser = mid_ser - bb_k1 * std_ser
-                u2_ser = mid_ser + bb_k2 * std_ser
-                l2_ser = mid_ser - bb_k2 * std_ser
+                u1_ser = mid_ser + bb_u1_k * std_ser
+                l1_ser = mid_ser - bb_l1_k * std_ser
+                u2_ser = mid_ser + bb_u2_k * std_ser
+                l2_ser = mid_ser - bb_l2_k * std_ser
 
                 mid_vals, u1_vals, l1_vals, u2_vals, l2_vals = list(mid_ser), list(u1_ser), list(l1_ser), list(u2_ser), list(l2_ser)
 
@@ -298,22 +319,22 @@ class NativeCandlestickChart(QtWidgets.QWidget):
                 mid_pen = pg.mkPen(self.indicator_config.get("bb_mid_color", "#FFD700"), width=1.5, style=LINE_STYLES_MAP.get(self.indicator_config.get("bb_mid_style", "實線 (SolidLine)"), QtCore.Qt.SolidLine))
                 self.p1.plot(mid_vals, pen=mid_pen, name=f"BB_Mid({bb_period})")
 
-                # 畫第一層 (Upper1/Lower1)
+                # 畫第一層獨立 Upper1/Lower1
                 b1_pen = pg.mkPen(self.indicator_config.get("bb_b1_color", "#00E5FF"), width=1.2, style=LINE_STYLES_MAP.get(self.indicator_config.get("bb_b1_style", "虛線 (DashLine)"), QtCore.Qt.DashLine))
-                self.p1.plot(u1_vals, pen=b1_pen, name=f"BB_Upper1({bb_k1}σ)")
-                self.p1.plot(l1_vals, pen=b1_pen, name=f"BB_Lower1({bb_k1}σ)")
+                self.p1.plot(u1_vals, pen=b1_pen, name=f"BB_Upper1({bb_u1_k}σ)")
+                self.p1.plot(l1_vals, pen=b1_pen, name=f"BB_Lower1({bb_l1_k}σ)")
 
-                # 畫第二層 (Upper2/Lower2)
+                # 畫第二層獨立 Upper2/Lower2
                 b2_pen = pg.mkPen(self.indicator_config.get("bb_b2_color", "#E040FB"), width=1.2, style=LINE_STYLES_MAP.get(self.indicator_config.get("bb_b2_style", "點劃線 (DashDotLine)"), QtCore.Qt.DashDotLine))
-                self.p1.plot(u2_vals, pen=b2_pen, name=f"BB_Upper2({bb_k2}σ)")
-                self.p1.plot(l2_vals, pen=b2_pen, name=f"BB_Lower2({bb_k2}σ)")
+                self.p1.plot(u2_vals, pen=b2_pen, name=f"BB_Upper2({bb_u2_k}σ)")
+                self.p1.plot(l2_vals, pen=b2_pen, name=f"BB_Lower2({bb_l2_k}σ)")
 
                 self.computed_bb = {
                     "mid": mid_vals, "u1": u1_vals, "l1": l1_vals, "u2": u2_vals, "l2": l2_vals,
-                    "k1": bb_k1, "k2": bb_k2
+                    "u1_k": bb_u1_k, "l1_k": bb_l1_k, "u2_k": bb_u2_k, "l2_k": bb_l2_k
                 }
 
-        # 4. 計算與繪製副圖一 (Sub-Chart 1)
+        # 4. 計算與繪製副圖一 (Sub-Chart 1 - 預設永遠為成交量 Volume)
         sub1_type = self.indicator_config.get("sub1_type", "成交量 (Volume)")
         self._render_sub_chart(self.p2, sub1_type, df, is_sub1=True)
 

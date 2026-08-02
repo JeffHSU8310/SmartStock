@@ -6,6 +6,31 @@
 
 ## 📜 對話紀錄歷程
 
+### 📌 [記錄時間: 2026-08-02] - 期貨10年數據 + 大盤指數解析修復 + 主副圖 Overlay 釘選 + 布林獨立4條上下限 + 全指標 JSON 永久儲存 (v1.0.40)
+
+- **使用者需求 (User Prompt)**:
+  - 「1.期貨的歷史資料，又不見了。我要的十年以上。」
+  - 「2.加權指數&櫃買指數的K線圖資料又跟以前一樣，沒有抓取到。」
+  - 「3.圖片3中框就是主圖是均線數據資訊、副圖就是技術指標數據資訊」
+  - 「4.副圖1，預設永遠都是成交量」
+  - 「5.布林指標 要可以各自設定上限跟下限」
+  - 「所有指標參數都是可以被儲存的」
+
+- **系統處理與決策 (System Action & Decision)**:
+  - 於 [`src/sinopac_engine.py`](file:///E:/SmartStock/src/sinopac_engine.py) 將期貨歷史數據下載天數解鎖至 `3650` 天 (10 年以上)，對齊個股；並相容 Shioaji `api.Contracts.Indices` 與 `api.Contracts.Indexs` 加強指數合約解析。
+  - 於 [`src/widgets/candlestick_chart.py`](file:///E:/SmartStock/src/widgets/candlestick_chart.py) 連結 ViewBox `sigRangeChanged` 訊號，確保主圖、副圖一、副圖二左上角 Overlay 在縮放或滑動時 100% 釘選在畫布頂角，標註含趨勢符號 (**`↗` 上彎 / `↘` 下彎 / `→` 持平**) 之完整指標數據。
+  - 固定副圖一預設指標永遠為 `成交量 (Volume)`。
+  - 於 [`src/widgets/indicator_settings_dialog.py`](file:///E:/SmartStock/src/widgets/indicator_settings_dialog.py) 將布林通道拆解為 Upper1 K, Lower1 K, Upper2 K, Lower2 K 四條獨立上下限倍數數字微調器，並實作 `config/indicator_config.json` 設定檔寫入與讀取，重開軟體自動完全還原。
+  - 軟體版本由 `v1.0.39` 遞增至 `v1.0.40`（恪遵 Rule 13 `+0.0.1` 遞增規範）。
+
+- **當前專案狀態**:
+  - **本機工作目錄**: `E:\SmartStock`
+  - **軟體版本**: v1.0.40 (恪遵 Rule 13 `+0.0.1` 遞增)
+  - **GitHub 儲存庫**: `https://github.com/JeffHSU8310/SmartStock.git`
+  - **Git 分支**: main
+
+---
+
 ### 📌 [記錄時間: 2026-08-02] - 版面溢出修復 + 離線行情清空 + 主副圖獨立 Overlay 趨勢符號 (↗/↘/→) + 副圖自訂參數 (v1.0.39)
 
 - **使用者需求 (User Prompt)**:

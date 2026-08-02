@@ -1,5 +1,10 @@
+import os
+import json
+import logging
 from PySide6 import QtCore, QtGui, QtWidgets
 from typing import Dict, Any
+
+CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "config", "indicator_config.json")
 
 LINE_STYLES = {
     "實線 (SolidLine)": QtCore.Qt.SolidLine,
@@ -23,14 +28,18 @@ DEFAULT_INDICATOR_CONFIG = {
     ],
     "bb_enabled": True,
     "bb_period": 20,
-    "bb_k1": 1.0,
-    "bb_k2": 2.0,
+    # 布林通道 4 條獨立倍數設定 (Upper1, Lower1, Upper2, Lower2)
+    "bb_u1_k": 1.0,
+    "bb_l1_k": 1.0,
+    "bb_u2_k": 2.0,
+    "bb_l2_k": 2.0,
     "bb_mid_color": "#FFD700",
     "bb_mid_style": "實線 (SolidLine)",
     "bb_b1_color": "#00E5FF",
     "bb_b1_style": "虛線 (DashLine)",
     "bb_b2_color": "#E040FB",
     "bb_b2_style": "點劃線 (DashDotLine)",
+    # 副圖一預設永遠為成交量 (Volume)
     "sub1_type": "成交量 (Volume)",
     "sub2_type": "MACD",
     # 副圖技術指標自訂參數
@@ -43,6 +52,29 @@ DEFAULT_INDICATOR_CONFIG = {
     "atr_p": 14,
     "cci_p": 14
 }
+
+def load_indicator_config_from_json() -> Dict[str, Any]:
+    """從 config/indicator_config.json 讀取持久化設定檔，無檔案則回傳預設值"""
+    config = dict(DEFAULT_INDICATOR_CONFIG)
+    try:
+        if os.path.exists(CONFIG_FILE_PATH):
+            with open(CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
+                saved = json.load(f)
+                config.update(saved)
+                logging.info(f"Loaded indicator config from {CONFIG_FILE_PATH}")
+    except Exception as e:
+        logging.warning(f"Failed to load indicator config: {e}")
+    return config
+
+def save_indicator_config_to_json(config: Dict[str, Any]):
+    """將技術指標設定持久化寫入 config/indicator_config.json"""
+    try:
+        os.makedirs(os.path.dirname(CONFIG_FILE_PATH), exist_ok=True)
+        with open(CONFIG_FILE_PATH, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=4, ensure_ascii=False)
+        logging.info(f"Saved indicator config to {CONFIG_FILE_PATH}")
+    except Exception as e:
+        logging.error(f"Failed to save indicator config: {e}")
 
 class ColorButton(QtWidgets.QPushButton):
     """帶有色彩預覽與調色盤彈出視窗的自訂按鈕"""
@@ -76,14 +108,14 @@ class ColorButton(QtWidgets.QPushButton):
             self.color_changed.emit(self._color)
 
 class IndicatorSettingsDialog(QtWidgets.QDialog):
-    """技術指標詳細設定視窗 (支援 7 組均線 SMA/EMA、布林通道雙層上下限、副圖指標與自訂參數)"""
+    """技術指標詳細設定視窗 (支援 7 組均線 SMA/EMA、布林通道獨立 4 上下限倍數、副圖指標與持久化)"""
     config_saved_signal = QtCore.Signal(dict)
 
     def __init__(self, current_config: Dict[str, Any] = None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("⚙️ 技術指標詳細設定與顏色調色盤 (Indicator Settings)")
-        self.resize(820, 680)
-        self.config = dict(DEFAULT_INDICATOR_CONFIG)
+        self.setWindowTitle("⚙️ 技術指標詳細設定與顏色調色盤 (Indicator Settings v1.0.40)")
+        self.resize(860, 720)
+        self.config = load_indicator_config_from_json()
         if current_config:
             self.config.update(current_config)
 
@@ -178,12 +210,12 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
         # Tab 1: 主圖指標設定
         tab_main = QtWidgets.QWidget()
         self._setup_main_indicators_tab(tab_main)
-        self.tabs.addTab(tab_main, "📈 主圖指標設定 (均線 / 布林通道)")
+        self.tabs.addTab(tab_main, "📈 主圖指標設定 (7組均線 / 布林四條獨立上下限)")
 
         # Tab 2: 副圖指標設定
         tab_sub = QtWidgets.QWidget()
         self._setup_sub_indicators_tab(tab_sub)
-        self.tabs.addTab(tab_sub, "📊 副圖指標設定 (自訂參數)")
+        self.tabs.addTab(tab_sub, "📊 副圖指標設定 (自訂參數與類別)")
 
         layout.addWidget(self.tabs)
 
@@ -197,7 +229,7 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
         btn_cancel.setStyleSheet("background-color: #263238; color: #FFFFFF; font-weight: bold; padding: 8px 16px; border-radius: 6px;")
         btn_cancel.clicked.connect(self.reject)
 
-        btn_save = QtWidgets.QPushButton("💾 套用並儲存設定")
+        btn_save = QtWidgets.QPushButton("💾 套用並永久儲存設定")
         btn_save.setStyleSheet("background-color: #0066FF; color: #FFFFFF; font-weight: bold; padding: 8px 20px; border-radius: 6px;")
         btn_save.clicked.connect(self._save_config)
 
@@ -278,8 +310,8 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
         layout_ma.addLayout(grid_ma)
         scroll_layout.addWidget(box_ma)
 
-        # 2. 布林通道 Group Box
-        box_bb = QtWidgets.QGroupBox("2. 布林通道指標 (Bollinger Bands - 雙層上下限)")
+        # 2. 布林通道 Group Box (支援獨立 4 條上限/下限倍數)
+        box_bb = QtWidgets.QGroupBox("2. 布林通道指標 (Bollinger Bands - 四條獨立上限與下限)")
         layout_bb = QtWidgets.QVBoxLayout(box_bb)
 
         self.chk_bb_master = QtWidgets.QCheckBox("顯示布林通道 (Enable Bollinger Bands)")
@@ -289,50 +321,66 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
 
         grid_bb = QtWidgets.QGridLayout()
 
-        grid_bb.addWidget(QtWidgets.QLabel("通道週期:"), 0, 0)
+        grid_bb.addWidget(QtWidgets.QLabel("通道計算週期:"), 0, 0)
         self.spn_bb_period = QtWidgets.QSpinBox()
         self.spn_bb_period.setRange(2, 500)
         self.spn_bb_period.setValue(self.config.get("bb_period", 20))
         grid_bb.addWidget(self.spn_bb_period, 0, 1)
 
-        grid_bb.addWidget(QtWidgets.QLabel("第一層標準差 (K1):"), 0, 2)
-        self.spn_bb_k1 = QtWidgets.QDoubleSpinBox()
-        self.spn_bb_k1.setRange(0.1, 10.0)
-        self.spn_bb_k1.setSingleStep(0.1)
-        self.spn_bb_k1.setValue(self.config.get("bb_k1", 1.0))
-        grid_bb.addWidget(self.spn_bb_k1, 0, 3)
+        # 第一層獨立上限與下限倍數
+        grid_bb.addWidget(QtWidgets.QLabel("第一層上限倍數 (Upper 1 K):"), 1, 0)
+        self.spn_bb_u1_k = QtWidgets.QDoubleSpinBox()
+        self.spn_bb_u1_k.setRange(0.1, 10.0)
+        self.spn_bb_u1_k.setSingleStep(0.1)
+        self.spn_bb_u1_k.setValue(self.config.get("bb_u1_k", 1.0))
+        grid_bb.addWidget(self.spn_bb_u1_k, 1, 1)
 
-        grid_bb.addWidget(QtWidgets.QLabel("第二層標準差 (K2):"), 0, 4)
-        self.spn_bb_k2 = QtWidgets.QDoubleSpinBox()
-        self.spn_bb_k2.setRange(0.1, 10.0)
-        self.spn_bb_k2.setSingleStep(0.1)
-        self.spn_bb_k2.setValue(self.config.get("bb_k2", 2.0))
-        grid_bb.addWidget(self.spn_bb_k2, 0, 5)
+        grid_bb.addWidget(QtWidgets.QLabel("第一層下限倍數 (Lower 1 K):"), 1, 2)
+        self.spn_bb_l1_k = QtWidgets.QDoubleSpinBox()
+        self.spn_bb_l1_k.setRange(0.1, 10.0)
+        self.spn_bb_l1_k.setSingleStep(0.1)
+        self.spn_bb_l1_k.setValue(self.config.get("bb_l1_k", 1.0))
+        grid_bb.addWidget(self.spn_bb_l1_k, 1, 3)
 
-        # 線條樣式設定
-        grid_bb.addWidget(QtWidgets.QLabel("中線 (Middle MA):"), 1, 0)
+        # 第二層獨立上限與下限倍數
+        grid_bb.addWidget(QtWidgets.QLabel("第二層上限倍數 (Upper 2 K):"), 2, 0)
+        self.spn_bb_u2_k = QtWidgets.QDoubleSpinBox()
+        self.spn_bb_u2_k.setRange(0.1, 10.0)
+        self.spn_bb_u2_k.setSingleStep(0.1)
+        self.spn_bb_u2_k.setValue(self.config.get("bb_u2_k", 2.0))
+        grid_bb.addWidget(self.spn_bb_u2_k, 2, 1)
+
+        grid_bb.addWidget(QtWidgets.QLabel("第二層下限倍數 (Lower 2 K):"), 2, 2)
+        self.spn_bb_l2_k = QtWidgets.QDoubleSpinBox()
+        self.spn_bb_l2_k.setRange(0.1, 10.0)
+        self.spn_bb_l2_k.setSingleStep(0.1)
+        self.spn_bb_l2_k.setValue(self.config.get("bb_l2_k", 2.0))
+        grid_bb.addWidget(self.spn_bb_l2_k, 2, 3)
+
+        # 線條色彩與線型
+        grid_bb.addWidget(QtWidgets.QLabel("中線 (Middle MA):"), 3, 0)
         self.btn_bb_mid_col = ColorButton(self.config.get("bb_mid_color", "#FFD700"))
         self.cbo_bb_mid_sty = QtWidgets.QComboBox()
         self.cbo_bb_mid_sty.addItems(LINE_STYLE_NAMES)
         self.cbo_bb_mid_sty.setCurrentText(self.config.get("bb_mid_style", "實線 (SolidLine)"))
-        grid_bb.addWidget(self.btn_bb_mid_col, 1, 1)
-        grid_bb.addWidget(self.cbo_bb_mid_sty, 1, 2, 1, 2)
+        grid_bb.addWidget(self.btn_bb_mid_col, 3, 1)
+        grid_bb.addWidget(self.cbo_bb_mid_sty, 3, 2, 1, 2)
 
-        grid_bb.addWidget(QtWidgets.QLabel("第一層通道 (Upper1/Lower1):"), 2, 0)
+        grid_bb.addWidget(QtWidgets.QLabel("第一層通道 (Upper1/Lower1):"), 4, 0)
         self.btn_bb_b1_col = ColorButton(self.config.get("bb_b1_color", "#00E5FF"))
         self.cbo_bb_b1_sty = QtWidgets.QComboBox()
         self.cbo_bb_b1_sty.addItems(LINE_STYLE_NAMES)
         self.cbo_bb_b1_sty.setCurrentText(self.config.get("bb_b1_style", "虛線 (DashLine)"))
-        grid_bb.addWidget(self.btn_bb_b1_col, 2, 1)
-        grid_bb.addWidget(self.cbo_bb_b1_sty, 2, 2, 1, 2)
+        grid_bb.addWidget(self.btn_bb_b1_col, 4, 1)
+        grid_bb.addWidget(self.cbo_bb_b1_sty, 4, 2, 1, 2)
 
-        grid_bb.addWidget(QtWidgets.QLabel("第二層通道 (Upper2/Lower2):"), 3, 0)
+        grid_bb.addWidget(QtWidgets.QLabel("第二層通道 (Upper2/Lower2):"), 5, 0)
         self.btn_bb_b2_col = ColorButton(self.config.get("bb_b2_color", "#E040FB"))
         self.cbo_bb_b2_sty = QtWidgets.QComboBox()
         self.cbo_bb_b2_sty.addItems(LINE_STYLE_NAMES)
         self.cbo_bb_b2_sty.setCurrentText(self.config.get("bb_b2_style", "點劃線 (DashDotLine)"))
-        grid_bb.addWidget(self.btn_bb_b2_col, 3, 1)
-        grid_bb.addWidget(self.cbo_bb_b2_sty, 3, 2, 1, 2)
+        grid_bb.addWidget(self.btn_bb_b2_col, 5, 1)
+        grid_bb.addWidget(self.cbo_bb_b2_sty, 5, 2, 1, 2)
 
         layout_bb.addLayout(grid_bb)
         scroll_layout.addWidget(box_bb)
@@ -356,7 +404,7 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
         ]
 
         # 1. 副圖選擇 Group Box
-        box_sub_sel = QtWidgets.QGroupBox("1. 副圖指標類別選擇 (Sub-Chart Selection)")
+        box_sub_sel = QtWidgets.QGroupBox("1. 副圖指標類別選擇 (副圖一預設固定為成交量)")
         g1 = QtWidgets.QGridLayout(box_sub_sel)
         
         g1.addWidget(QtWidgets.QLabel("副圖一 (Upper Sub-Chart):"), 0, 0)
@@ -478,6 +526,7 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
         )
         if reply == QtWidgets.QMessageBox.Yes:
             self.config = dict(DEFAULT_INDICATOR_CONFIG)
+            save_indicator_config_to_json(self.config)
             self.accept()
 
     def _save_config(self):
@@ -495,8 +544,13 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
         self.config["ma_items"] = new_ma_items
         self.config["bb_enabled"] = self.chk_bb_master.isChecked()
         self.config["bb_period"] = self.spn_bb_period.value()
-        self.config["bb_k1"] = self.spn_bb_k1.value()
-        self.config["bb_k2"] = self.spn_bb_k2.value()
+
+        # 布林通道 4 條獨立倍數設定
+        self.config["bb_u1_k"] = self.spn_bb_u1_k.value()
+        self.config["bb_l1_k"] = self.spn_bb_l1_k.value()
+        self.config["bb_u2_k"] = self.spn_bb_u2_k.value()
+        self.config["bb_l2_k"] = self.spn_bb_l2_k.value()
+
         self.config["bb_mid_color"] = self.btn_bb_mid_col.color()
         self.config["bb_mid_style"] = self.cbo_bb_mid_sty.currentText()
         self.config["bb_b1_color"] = self.btn_bb_b1_col.color()
@@ -521,6 +575,9 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
         self.config["wr_p"] = self.spn_wr_p.value()
         self.config["atr_p"] = self.spn_atr_p.value()
         self.config["cci_p"] = self.spn_cci_p.value()
+
+        # 永久自動寫入 config/indicator_config.json
+        save_indicator_config_to_json(self.config)
 
         self.config_saved_signal.emit(self.config)
         self.accept()

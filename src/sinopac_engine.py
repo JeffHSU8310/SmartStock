@@ -100,29 +100,35 @@ class SinoPacEngine:
             contract = None
 
             if code_upper in ["IX0001", "TSE", "加權指數"]:
-                if hasattr(self.api, "Contracts") and hasattr(self.api.Contracts, "Indices"):
-                    indices = self.api.Contracts.Indices
-                    if hasattr(indices, "TSE"):
-                        tse = indices.TSE
-                        for target in ["IX0001", "001", "TSE001", "加權指數"]:
-                            if hasattr(tse, target):
-                                contract = getattr(tse, target)
-                                break
-                            elif isinstance(tse, dict) and target in tse:
-                                contract = tse[target]
+                for attr_name in ["Indices", "Indexs"]:
+                    if hasattr(self.api, "Contracts") and hasattr(self.api.Contracts, attr_name):
+                        indices = getattr(self.api.Contracts, attr_name)
+                        if hasattr(indices, "TSE"):
+                            tse = indices.TSE
+                            for target in ["IX0001", "001", "TSE001", "加權指數", "0001"]:
+                                if hasattr(tse, target):
+                                    contract = getattr(tse, target)
+                                    break
+                                elif isinstance(tse, dict) and target in tse:
+                                    contract = tse[target]
+                                    break
+                            if contract:
                                 break
 
             elif code_upper in ["IX0043", "OTC", "櫃買指數"]:
-                if hasattr(self.api, "Contracts") and hasattr(self.api.Contracts, "Indices"):
-                    indices = self.api.Contracts.Indices
-                    if hasattr(indices, "OTC"):
-                        otc = indices.OTC
-                        for target in ["IX0043", "101", "OTC101", "櫃買指數"]:
-                            if hasattr(otc, target):
-                                contract = getattr(otc, target)
-                                break
-                            elif isinstance(otc, dict) and target in otc:
-                                contract = otc[target]
+                for attr_name in ["Indices", "Indexs"]:
+                    if hasattr(self.api, "Contracts") and hasattr(self.api.Contracts, attr_name):
+                        indices = getattr(self.api.Contracts, attr_name)
+                        if hasattr(indices, "OTC"):
+                            otc = indices.OTC
+                            for target in ["IX0043", "101", "OTC101", "櫃買指數", "0043"]:
+                                if hasattr(otc, target):
+                                    contract = getattr(otc, target)
+                                    break
+                                elif isinstance(otc, dict) and target in otc:
+                                    contract = otc[target]
+                                    break
+                            if contract:
                                 break
 
             elif code_upper in ["TX00", "TXF", "TXFR1", "TXRF1", "台指期"]:
@@ -369,7 +375,8 @@ class SinoPacEngine:
             if contract and self._safe_has_code(contract):
                 try:
                     today = datetime.date.today()
-                    days_back = 60 if is_futures else (3650 if ktype in ["Day", "日", "日K", "Week", "週", "Month", "月"] else 60)
+                    # ★ 恪遵用戶權威指示：期貨與股票一律解鎖抓取 10 年以上 (3,650 天) 歷史數據 ★
+                    days_back = 3650 if ktype in ["Day", "日", "日K", "Week", "週", "Month", "月"] else 60
 
                     start_date = (today - datetime.timedelta(days=days_back)).strftime("%Y-%m-%d")
                     end_date = today.strftime("%Y-%m-%d")

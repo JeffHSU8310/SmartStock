@@ -4,6 +4,26 @@
 
 ---
 
+## [v1.0.40] - 2026-08-02
+
+### 🎯 期貨10年數據 + 大盤指數解析修復 + 主副圖 Overlay 釘選 + 布林獨立4條上下限 + 全指標 JSON 永久儲存 (v1.0.40)
+- **期貨數據天數解鎖 10 年以上 ([src/sinopac_engine.py](file:///E:/SmartStock/src/sinopac_engine.py))**：
+  - 徹底移除期貨僅下載 60 天的限制，全數擴充解鎖至 **3,650 天 (10 年以上)**，對齊股票歷史長度需求。
+- **加權指數與櫃買指數 API 雙版本相容解析 ([src/sinopac_engine.py](file:///E:/SmartStock/src/sinopac_engine.py))**：
+  - 相容 Shioaji `api.Contracts.Indices` 與 `api.Contracts.Indexs` 結構，精準抓取 `TSE001` / `IX0001` 與 `OTC101` / `IX0043` 歷史數據。
+- **主圖與副圖左上角 Overlay 100% 畫布釘選 ([src/widgets/candlestick_chart.py](file:///E:/SmartStock/src/widgets/candlestick_chart.py))**：
+  - 連結 ViewBox `sigRangeChanged` 訊號，確保縮放、滾動或拖曳時，主圖左上角 (均線數據)、副圖一左上角、副圖二左上角數據與趨勢符號 (**`↗` 上彎 / `↘` 下彎 / `→` 持平**) 100% 釘選於畫布頂角。
+- **副圖一預設永遠為成交量 ([src/widgets/candlestick_chart.py](file:///E:/SmartStock/src/widgets/candlestick_chart.py), [src/widgets/indicator_settings_dialog.py](file:///E:/SmartStock/src/widgets/indicator_settings_dialog.py))**：
+  - 固定副圖一預設指標永遠為 `成交量 (Volume)`。
+- **布林通道 4 條獨立上下限倍數設定 ([src/widgets/indicator_settings_dialog.py](file:///E:/SmartStock/src/widgets/indicator_settings_dialog.py), [src/widgets/candlestick_chart.py](file:///E:/SmartStock/src/widgets/candlestick_chart.py))**：
+  - 將布林通道倍數拆解為 Upper1 K (第一層上限)、Lower1 K (第一層下限)、Upper2 K (第二層上限)、Lower2 K (第二層下限) 4 組獨立數字微調器。
+- **全指標與顏色設定永久 JSON 自動儲存 ([src/widgets/indicator_settings_dialog.py](file:///E:/SmartStock/src/widgets/indicator_settings_dialog.py))**：
+  - 實作 `config/indicator_config.json` 讀寫機制，用戶點擊儲存後自動持久化寫入，重開軟體自動完全還原。
+- **版本規範**：
+  - 版號升級至 v1.0.40，嚴格遵守 Rule 13 (+0.0.1)。
+
+---
+
 ## [v1.0.39] - 2026-08-02
 
 ### 🎯 版面溢出修復 + 離線行情清空 + 主副圖獨立 Overlay 趨勢符號 (↗/↘/→) + 副圖自訂參數 (v1.0.39)
