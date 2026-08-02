@@ -251,9 +251,9 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         header.addSpacing(15)
 
         # 大盤三大指數即時快報 Banner (點擊即可切換主圖 K 線圖)
-        self.lbl_tse_index = self._create_index_banner("IX0001", "加權指數", "43,119.75 漲跌: +3,186.45 (+7.97%) 總成交量: 8,337.1 億", "#FF3B69")
-        self.lbl_otc_index = self._create_index_banner("IX0043", "櫃買指數", "347.85 漲跌: +21.62 (+6.62%) 總成交量: 1,344.4 億", "#FF3B69")
-        self.lbl_txf_index = self._create_index_banner("TX00", "台指期貨", "42,650.00 漲跌: -1,077.00 (-2.46%) 總成交量: 171,373 口", "#00E676")
+        self.lbl_tse_index = self._create_index_banner("IX0001", "加權指數", "-- (點擊右上角登入永豐金 API 載入全真實行情)", "#8C9BAE")
+        self.lbl_otc_index = self._create_index_banner("IX0043", "櫃買指數", "-- (點擊右上角登入永豐金 API 載入全真實行情)", "#8C9BAE")
+        self.lbl_txf_index = self._create_index_banner("TX00", "台指期貨", "-- (點擊右上角登入永豐金 API 載入全真實行情)", "#8C9BAE")
 
         header.addWidget(self.lbl_tse_index)
         header.addWidget(self.lbl_otc_index)
@@ -548,31 +548,36 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         quotes = self.engine.get_realtime_quotes(codes)
 
-        # 1. 刷新頂部大盤三大指數 Banner (標註連線狀態)
-        tag = "<span style='color:#00E676; font-size:10px;'>[全真實盤]</span>" if self.engine.is_connected else "<span style='color:#FF9800; font-size:10px;'>[模擬展示]</span>"
+        # 1. 刷新頂部大盤三大指數 Banner (恪遵 Rule 22 券商真實數據金律 - 絕不造假)
+        if not self.engine.is_connected:
+            tag = "<span style='color:#FF9800; font-size:10px;'>[尚未連線 API]</span>"
+            self.lbl_tse_index.setText(f"{tag} <span style='color:#8C9BAE; font-weight:bold;'>加權指數:</span> <span style='color:#FF9800;'>-- (點擊右上角登入永豐金 API)</span>")
+            self.lbl_otc_index.setText(f"{tag} <span style='color:#8C9BAE; font-weight:bold;'>櫃買指數:</span> <span style='color:#FF9800;'>-- (點擊右上角登入永豐金 API)</span>")
+            self.lbl_txf_index.setText(f"{tag} <span style='color:#8C9BAE; font-weight:bold;'>台指期貨:</span> <span style='color:#FF9800;'>-- (點擊右上角登入永豐金 API)</span>")
+        else:
+            tag = "<span style='color:#00E676; font-size:10px;'>[全真實盤 API]</span>"
+            for q in quotes:
+                code = q['code']
+                price = q['price']
+                chg = q['change']
+                pct = q['pct_change']
+                vol = q['volume']
+                
+                color = "#FF3B69" if chg >= 0 else "#00E676"
+                sign = "+" if chg >= 0 else ""
 
-        for q in quotes:
-            code = q['code']
-            price = q['price']
-            chg = q['change']
-            pct = q['pct_change']
-            vol = q['volume']
-            
-            color = "#FF3B69" if chg >= 0 else "#00E676"
-            sign = "+" if chg >= 0 else ""
-
-            if code == "IX0001":
-                vol_str = q.get('amount_str', f"{vol:,} 億" if vol > 0 else "8,337.1 億")
-                txt = f"{tag} <span style='color:#8C9BAE; font-weight:bold;'>加權指數:</span> <span style='color:#FFFFFF; font-weight:bold;'>{price:,.2f}</span> <span style='color:{color}; font-weight:bold;'>漲跌: {sign}{chg:,.2f} ({sign}{pct:.2f}%)</span> <span style='color:#8C9BAE;'>總成交量: {vol_str}</span>"
-                self.lbl_tse_index.setText(txt)
-            elif code in ["IX0043", "OTC"]:
-                vol_str = q.get('amount_str', f"{vol:,} 億" if vol > 0 else "1,344.4 億")
-                txt = f"{tag} <span style='color:#8C9BAE; font-weight:bold;'>櫃買指數:</span> <span style='color:#FFFFFF; font-weight:bold;'>{price:,.2f}</span> <span style='color:{color}; font-weight:bold;'>漲跌: {sign}{chg:,.2f} ({sign}{pct:.2f}%)</span> <span style='color:#8C9BAE;'>總成交量: {vol_str}</span>"
-                self.lbl_otc_index.setText(txt)
-            elif code in ["TX00", "TXFR1", "TXF"]:
-                vol_str = q.get('amount_str', f"{vol:,} 口" if vol > 0 else "171,373 口")
-                txt = f"{tag} <span style='color:#8C9BAE; font-weight:bold;'>台指期貨:</span> <span style='color:#FFFFFF; font-weight:bold;'>{price:,.2f}</span> <span style='color:{color}; font-weight:bold;'>漲跌: {sign}{chg:,.2f} ({sign}{pct:.2f}%)</span> <span style='color:#8C9BAE;'>總成交量: {vol_str}</span>"
-                self.lbl_txf_index.setText(txt)
+                if code == "IX0001":
+                    vol_str = q.get('amount_str', f"{vol:,} 億") if vol > 0 else ""
+                    txt = f"{tag} <span style='color:#8C9BAE; font-weight:bold;'>加權指數:</span> <span style='color:#FFFFFF; font-weight:bold;'>{price:,.2f}</span> <span style='color:{color}; font-weight:bold;'>漲跌: {sign}{chg:,.2f} ({sign}{pct:.2f}%)</span> <span style='color:#8C9BAE;'>{vol_str}</span>"
+                    self.lbl_tse_index.setText(txt)
+                elif code in ["IX0043", "OTC"]:
+                    vol_str = q.get('amount_str', f"{vol:,} 億") if vol > 0 else ""
+                    txt = f"{tag} <span style='color:#8C9BAE; font-weight:bold;'>櫃買指數:</span> <span style='color:#FFFFFF; font-weight:bold;'>{price:,.2f}</span> <span style='color:{color}; font-weight:bold;'>漲跌: {sign}{chg:,.2f} ({sign}{pct:.2f}%)</span> <span style='color:#8C9BAE;'>{vol_str}</span>"
+                    self.lbl_otc_index.setText(txt)
+                elif code in ["TX00", "TXFR1", "TXF"]:
+                    vol_str = q.get('amount_str', f"{vol:,} 口") if vol > 0 else ""
+                    txt = f"{tag} <span style='color:#8C9BAE; font-weight:bold;'>台指期貨:</span> <span style='color:#FFFFFF; font-weight:bold;'>{price:,.2f}</span> <span style='color:{color}; font-weight:bold;'>漲跌: {sign}{chg:,.2f} ({sign}{pct:.2f}%)</span> <span style='color:#8C9BAE;'>{vol_str}</span>"
+                    self.lbl_txf_index.setText(txt)
 
             # 2. 刷新自選股表格價格
             self.watchlist_widget.update_quote(q['code'], q['price'], q['pct_change'], q.get('name', ''))

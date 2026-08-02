@@ -280,19 +280,31 @@ class SinoPacEngine:
         if not self.is_connected or not self.api:
             return results
 
+        code_map = {}
         try:
             contracts = []
-            for code in code_list:
-                c = self.get_contract(code)
+            for req_code in code_list:
+                c = self.get_contract(req_code)
                 if c:
                     contracts.append(c)
+                    c_code = getattr(c, "code", "")
+                    code_map[c_code] = req_code
+                    code_map[req_code] = req_code
 
             if contracts:
                 snaps = self.api.snapshots(contracts)
                 for snap in snaps:
-                    c_code = getattr(snap, "code", "")
-                    display_code = "TX00" if c_code in ["TXFR1", "TXF"] else c_code
-                    display_name = self.get_symbol_name(display_code)
+                    snap_code = getattr(snap, "code", "")
+                    
+                    target_code = code_map.get(snap_code, snap_code)
+                    if snap_code in ["001", "0001", "TSE001"]:
+                        target_code = "IX0001"
+                    elif snap_code in ["101", "0043", "OTC101"]:
+                        target_code = "IX0043"
+                    elif snap_code in ["TXFR1", "TXF"]:
+                        target_code = "TX00"
+
+                    display_name = self.get_symbol_name(target_code)
 
                     c_close = float(getattr(snap, "close", 0.0))
                     ref_price = float(getattr(snap, "reference_price", getattr(snap, "open", c_close)))
@@ -309,7 +321,7 @@ class SinoPacEngine:
                     amt_str = f"{amt / 1e8:.1f}億" if amt > 0 else ""
 
                     results.append({
-                        "code": display_code if display_code else code,
+                        "code": target_code,
                         "name": display_name,
                         "price": c_close,
                         "ref_price": ref_price,
