@@ -148,6 +148,63 @@ class SinoPacEngine:
         except Exception:
             return False
 
+    def _extract_contract(self, container: Any, keys: List[str], name_keywords: List[str] = None) -> Any:
+        """從 Shioaji 合約容器中極速提取 Contract 物件 (支援 dict []、getattr 及動態 values 遍歷)"""
+        if not container:
+            return None
+
+        # 1. 嘗試直接 Key 檢索 (支援 [] 與 getattr)
+        for k in keys:
+            try:
+                if hasattr(container, "__getitem__"):
+                    item = container[k]
+                    if item and self._safe_has_code(item):
+                        return item
+            except Exception:
+                pass
+
+            try:
+                item = getattr(container, k, None)
+                if item and self._safe_has_code(item):
+                    return item
+            except Exception:
+                pass
+
+        # 2. 嘗試 values() 或 遍歷
+        items_to_check = []
+        if isinstance(container, dict) or hasattr(container, "values"):
+            try:
+                items_to_check = list(container.values())
+            except Exception:
+                pass
+        elif hasattr(container, "__iter__"):
+            try:
+                for k in container:
+                    try:
+                        val = container[k] if hasattr(container, "__getitem__") else getattr(container, k, None)
+                        if val:
+                            items_to_check.append(val)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        for item in items_to_check:
+            if not self._safe_has_code(item):
+                continue
+            c_code = str(getattr(item, "code", "")).strip().upper()
+            c_name = str(getattr(item, "name", "")).strip()
+
+            if c_code in [x.upper() for x in keys]:
+                return item
+
+            if name_keywords:
+                for kw in name_keywords:
+                    if kw in c_name:
+                        return item
+
+        return None
+
     def get_contract(self, code: str):
         """全面防爆獲取官方正確 Shioaji Contract 物件 (支援股票、大盤加權指數 IX0001/001、櫃買指數 IX0043/101、台指期貨 TXFR1)"""
         if not self.api or not self.is_connected:
@@ -169,59 +226,24 @@ class SinoPacEngine:
                 for index_attr in ["Indexs", "Indices"]:
                     indices = getattr(contracts_obj, index_attr, None)
                     if indices and hasattr(indices, "TSE"):
-                        tse = indices.TSE
-                        # 字典或屬性遍歷
-                        if hasattr(tse, "__iter__"):
-                            for item_key in tse:
-                                item = tse[item_key] if isinstance(tse, dict) else getattr(tse, item_key, None)
-                                c_code = getattr(item, "code", "")
-                                c_name = getattr(item, "name", "")
-                                if c_code in ["001", "0001", "IX0001", "TSE001"] or "加權" in c_name:
-                                    contract = item
-                                    break
-                        if not contract:
-                            for target in ["001", "0001", "IX0001", "TSE001"]:
-                                if hasattr(tse, target):
-                                    contract = getattr(tse, target)
-                                    break
+                        contract = self._extract_contract(indices.TSE, ["001", "0001", "IX0001", "TSE001", "TSE0001", "0000"], ["加權", "發行量"])
+                        if contract:
+                            break
 
             # 2. 處理櫃買指數 (IX0043 / OTC / 101)
             elif code_upper in ["IX0043", "OTC", "櫃買指數", "101", "0043"]:
                 for index_attr in ["Indexs", "Indices"]:
                     indices = getattr(contracts_obj, index_attr, None)
                     if indices and hasattr(indices, "OTC"):
-                        otc = indices.OTC
-                        if hasattr(otc, "__iter__"):
-                            for item_key in otc:
-                                item = otc[item_key] if isinstance(otc, dict) else getattr(otc, item_key, None)
-                                c_code = getattr(item, "code", "")
-                                c_name = getattr(item, "name", "")
-                                if c_code in ["101", "0043", "IX0043", "OTC101"] or "櫃買" in c_name:
-                                    contract = item
-                                    break
-                        if not contract:
-                            for target in ["101", "0043", "IX0043", "OTC101"]:
-                                if hasattr(otc, target):
-                                    contract = getattr(otc, target)
-                                    break
+                        contract = self._extract_contract(indices.OTC, ["101", "0043", "IX0043", "OTC101", "OTC0043"], ["櫃買"])
+                        if contract:
+                            break
 
             # 3. 處理台指期貨 (TX00 / TXF / TXFR1)
             elif code_upper in ["TX00", "TXF", "TXFR1", "TXRF1", "台指期"]:
                 fut = getattr(contracts_obj, "Futures", None)
                 if fut and hasattr(fut, "TXF"):
-                    txf = fut.TXF
-                    if hasattr(txf, "__iter__"):
-                        for item_key in txf:
-                            item = txf[item_key] if isinstance(txf, dict) else getattr(txf, item_key, None)
-                            c_code = getattr(item, "code", "")
-                            if c_code == "TXFR1" or "TXF" in c_code:
-                                contract = item
-                                break
-                    if not contract:
-                        for target in ["TXFR1", "TXF202608", "TXF202609"]:
-                            if hasattr(txf, target):
-                                contract = getattr(txf, target)
-                                break
+                    contract = self._extract_contract(fut.TXF, ["TXFR1", "TXF", "TXF202608", "TXF202609"], ["台指期", "全月"])
 
             # 4. 處理一般個股 (2330, 2454 等)
             else:
@@ -229,9 +251,10 @@ class SinoPacEngine:
                 if stk:
                     for market_name in ["TSE", "OTC"]:
                         m_obj = getattr(stk, market_name, None)
-                        if m_obj and hasattr(m_obj, code_upper):
-                            contract = getattr(m_obj, code_upper)
-                            break
+                        if m_obj:
+                            contract = self._extract_contract(m_obj, [code_upper], None)
+                            if contract:
+                                break
 
             if contract and self._safe_has_code(contract):
                 self.contracts_cache[code_upper] = contract
