@@ -32,7 +32,16 @@ DEFAULT_INDICATOR_CONFIG = {
     "bb_b2_color": "#E040FB",
     "bb_b2_style": "點劃線 (DashDotLine)",
     "sub1_type": "成交量 (Volume)",
-    "sub2_type": "MACD"
+    "sub2_type": "MACD",
+    # 副圖技術指標自訂參數
+    "macd_fast": 12, "macd_slow": 26, "macd_signal": 9,
+    "kdj_n": 9, "kdj_m1": 3, "kdj_m2": 3,
+    "rsi_p1": 6, "rsi_p2": 12, "rsi_p3": 24,
+    "vma_p1": 5, "vma_p2": 10,
+    "wr_p": 14,
+    "bias_p1": 6, "bias_p2": 12, "bias_p3": 24,
+    "atr_p": 14,
+    "cci_p": 14
 }
 
 class ColorButton(QtWidgets.QPushButton):
@@ -54,10 +63,10 @@ class ColorButton(QtWidgets.QPushButton):
 
     def _update_style(self):
         self.setText(self._color)
-        # 依色彩亮度決定文字顏色
         bg = QtGui.QColor(self._color)
-        text_col = "#000000" if (bg.red()*0.299 + bg.green()*0.587 + bg.blue()*0.114) > 180 else "#FFFFFF"
-        self.setStyleSheet(f"background-color: {self._color}; color: {text_col}; font-weight: bold; border-radius: 4px; padding: 4px 10px;")
+        # 貫徹鐵律：淺色背景字體一律強制純黑 #000000
+        text_col = "#000000" if (bg.red()*0.299 + bg.green()*0.587 + bg.blue()*0.114) > 150 else "#FFFFFF"
+        self.setStyleSheet(f"background-color: {self._color}; color: {text_col}; font-weight: bold; border-radius: 4px; padding: 4px 10px; border: 1px solid #555555;")
 
     def _choose_color(self):
         col = QtWidgets.QColorDialog.getColor(QtGui.QColor(self._color), self, "選擇指標線型顏色")
@@ -67,18 +76,96 @@ class ColorButton(QtWidgets.QPushButton):
             self.color_changed.emit(self._color)
 
 class IndicatorSettingsDialog(QtWidgets.QDialog):
-    """技術指標詳細設定視窗 (支援 7 組均線 SMA/EMA、布林通道雙層上下限、副圖指標切換與調色盤選色)"""
+    """技術指標詳細設定視窗 (支援 7 組均線 SMA/EMA、布林通道雙層上下限、副圖指標與自訂參數)"""
     config_saved_signal = QtCore.Signal(dict)
 
     def __init__(self, current_config: Dict[str, Any] = None, parent=None):
         super().__init__(parent)
         self.setWindowTitle("⚙️ 技術指標詳細設定與顏色調色盤 (Indicator Settings)")
-        self.resize(780, 620)
+        self.resize(820, 680)
         self.config = dict(DEFAULT_INDICATOR_CONFIG)
         if current_config:
             self.config.update(current_config)
 
+        self._setup_dialog_qss()
         self._init_ui()
+
+    def _setup_dialog_qss(self):
+        """套用高科技極致暗黑 QSS 主題 (貫徹淺底純黑字高對比鐵律)"""
+        qss = """
+        QDialog {
+            background-color: #121418;
+            color: #FFFFFF;
+            font-family: "Microsoft JhengHei", "Segoe UI", sans-serif;
+            font-size: 13px;
+        }
+        QTabWidget::pane {
+            border: 1px solid #2C323F;
+            background-color: #16191E;
+            border-radius: 6px;
+        }
+        QTabBar::tab {
+            background-color: #1E222A;
+            color: #8C9BAE;
+            padding: 10px 22px;
+            margin-right: 4px;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+            font-weight: bold;
+        }
+        QTabBar::tab:selected {
+            background-color: #0066FF;
+            color: #FFFFFF;
+        }
+        QGroupBox {
+            border: 1px solid #2C323F;
+            border-radius: 8px;
+            margin-top: 14px;
+            font-weight: bold;
+            color: #00E5FF;
+            background-color: #16191E;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 12px;
+            padding: 0 6px;
+            background-color: #16191E;
+        }
+        QLabel {
+            color: #E0E6ED;
+        }
+        QCheckBox {
+            color: #FFFFFF;
+            font-weight: bold;
+        }
+        QSpinBox, QDoubleSpinBox {
+            background-color: #1E222A;
+            color: #00E5FF;
+            border: 1px solid #2C323F;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-weight: bold;
+        }
+        QComboBox {
+            background-color: #1E222A;
+            color: #FFFFFF;
+            border: 1px solid #2C323F;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-weight: bold;
+        }
+        QComboBox QAbstractItemView {
+            background-color: #16191E;
+            color: #FFFFFF;
+            selection-background-color: #0066FF;
+            selection-color: #FFFFFF;
+        }
+        QScrollArea {
+            border: none;
+            background-color: #121418;
+        }
+        """
+        self.setStyleSheet(qss)
 
     def _init_ui(self):
         layout = QtWidgets.QVBoxLayout(self)
@@ -96,22 +183,22 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
         # Tab 2: 副圖指標設定
         tab_sub = QtWidgets.QWidget()
         self._setup_sub_indicators_tab(tab_sub)
-        self.tabs.addTab(tab_sub, "📊 副圖指標設定 (MACD / KDJ / RSI 等)")
+        self.tabs.addTab(tab_sub, "📊 副圖指標設定 (自訂參數)")
 
         layout.addWidget(self.tabs)
 
         # 底部控制按鈕
         btn_box = QtWidgets.QHBoxLayout()
         btn_reset = QtWidgets.QPushButton("🔄 恢復預設值")
-        btn_reset.setStyleSheet("background-color: #37474F; color: #FFFFFF; font-weight: bold; padding: 8px 16px;")
+        btn_reset.setStyleSheet("background-color: #37474F; color: #FFFFFF; font-weight: bold; padding: 8px 16px; border-radius: 6px;")
         btn_reset.clicked.connect(self._reset_defaults)
 
         btn_cancel = QtWidgets.QPushButton("❌ 取消")
-        btn_cancel.setStyleSheet("background-color: #263238; color: #FFFFFF; font-weight: bold; padding: 8px 16px;")
+        btn_cancel.setStyleSheet("background-color: #263238; color: #FFFFFF; font-weight: bold; padding: 8px 16px; border-radius: 6px;")
         btn_cancel.clicked.connect(self.reject)
 
         btn_save = QtWidgets.QPushButton("💾 套用並儲存設定")
-        btn_save.setStyleSheet("background-color: #0066FF; color: #FFFFFF; font-weight: bold; padding: 8px 20px;")
+        btn_save.setStyleSheet("background-color: #0066FF; color: #FFFFFF; font-weight: bold; padding: 8px 20px; border-radius: 6px;")
         btn_save.clicked.connect(self._save_config)
 
         btn_box.addWidget(btn_reset)
@@ -132,7 +219,7 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
         scroll_layout = QtWidgets.QVBoxLayout(scroll_content)
         scroll_layout.setSpacing(12)
 
-        # 1. 均線設定 Group Box (支援 7 組獨立均線)
+        # 1. 均線設定 Group Box
         box_ma = QtWidgets.QGroupBox("1. 移動平均線 (Moving Averages - 支援 7 組獨立設定)")
         layout_ma = QtWidgets.QVBoxLayout(box_ma)
         
@@ -160,7 +247,7 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
             chk.setChecked(item_cfg.get("enabled", True))
 
             lbl_name = QtWidgets.QLabel(f"MA {i+1}")
-            lbl_name.setStyleSheet("font-weight: bold;")
+            lbl_name.setStyleSheet("font-weight: bold; color: #00E5FF;")
 
             cbo_type = QtWidgets.QComboBox()
             cbo_type.addItems(["SMA", "EMA"])
@@ -191,7 +278,7 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
         layout_ma.addLayout(grid_ma)
         scroll_layout.addWidget(box_ma)
 
-        # 2. 布林通道 Group Box (支援 2 組上下限)
+        # 2. 布林通道 Group Box
         box_bb = QtWidgets.QGroupBox("2. 布林通道指標 (Bollinger Bands - 雙層上下限)")
         layout_bb = QtWidgets.QVBoxLayout(box_bb)
 
@@ -202,20 +289,20 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
 
         grid_bb = QtWidgets.QGridLayout()
 
-        grid_bb.addWidget(QtWidgets.QLabel("通道計算週期:"), 0, 0)
+        grid_bb.addWidget(QtWidgets.QLabel("通道週期:"), 0, 0)
         self.spn_bb_period = QtWidgets.QSpinBox()
         self.spn_bb_period.setRange(2, 500)
         self.spn_bb_period.setValue(self.config.get("bb_period", 20))
         grid_bb.addWidget(self.spn_bb_period, 0, 1)
 
-        grid_bb.addWidget(QtWidgets.QLabel("第一組標準差倍數 (K1):"), 0, 2)
+        grid_bb.addWidget(QtWidgets.QLabel("第一層標準差 (K1):"), 0, 2)
         self.spn_bb_k1 = QtWidgets.QDoubleSpinBox()
         self.spn_bb_k1.setRange(0.1, 10.0)
         self.spn_bb_k1.setSingleStep(0.1)
         self.spn_bb_k1.setValue(self.config.get("bb_k1", 1.0))
         grid_bb.addWidget(self.spn_bb_k1, 0, 3)
 
-        grid_bb.addWidget(QtWidgets.QLabel("第二組標準差倍數 (K2):"), 0, 4)
+        grid_bb.addWidget(QtWidgets.QLabel("第二層標準差 (K2):"), 0, 4)
         self.spn_bb_k2 = QtWidgets.QDoubleSpinBox()
         self.spn_bb_k2.setRange(0.1, 10.0)
         self.spn_bb_k2.setSingleStep(0.1)
@@ -255,42 +342,134 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
 
     def _setup_sub_indicators_tab(self, widget: QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(widget)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(16)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(10)
+
+        scroll = QtWidgets.QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll_content = QtWidgets.QWidget()
+        scroll_layout = QtWidgets.QVBoxLayout(scroll_content)
+        scroll_layout.setSpacing(12)
 
         sub_options = [
             "成交量 (Volume)", "MACD", "KDJ", "RSI", "KD", "WR (威廉指標)", "BIAS (乖離率)", "ATR (真實區間)", "DMI (趨向指標)", "CCI (順勢指標)"
         ]
 
-        # 副圖一選擇
-        box_sub1 = QtWidgets.QGroupBox("副圖一 (Sub-Chart 1 Indicator)")
-        l1 = QtWidgets.QHBoxLayout(box_sub1)
-        l1.addWidget(QtWidgets.QLabel("選擇指標:"))
+        # 1. 副圖選擇 Group Box
+        box_sub_sel = QtWidgets.QGroupBox("1. 副圖指標類別選擇 (Sub-Chart Selection)")
+        g1 = QtWidgets.QGridLayout(box_sub_sel)
+        
+        g1.addWidget(QtWidgets.QLabel("副圖一 (Upper Sub-Chart):"), 0, 0)
         self.cbo_sub1 = QtWidgets.QComboBox()
         self.cbo_sub1.addItems(sub_options)
         self.cbo_sub1.setCurrentText(self.config.get("sub1_type", "成交量 (Volume)"))
-        l1.addWidget(self.cbo_sub1, stretch=1)
-        layout.addWidget(box_sub1)
+        g1.addWidget(self.cbo_sub1, 0, 1)
 
-        # 副圖二選擇
-        box_sub2 = QtWidgets.QGroupBox("副圖二 (Sub-Chart 2 Indicator)")
-        l2 = QtWidgets.QHBoxLayout(box_sub2)
-        l2.addWidget(QtWidgets.QLabel("選擇指標:"))
+        g1.addWidget(QtWidgets.QLabel("副圖二 (Lower Sub-Chart):"), 1, 0)
         self.cbo_sub2 = QtWidgets.QComboBox()
         self.cbo_sub2.addItems(sub_options)
         self.cbo_sub2.setCurrentText(self.config.get("sub2_type", "MACD"))
-        l2.addWidget(self.cbo_sub2, stretch=1)
-        layout.addWidget(box_sub2)
+        g1.addWidget(self.cbo_sub2, 1, 1)
 
-        # 說明提示
-        lbl_tip = QtWidgets.QLabel(
-            "💡 提示：修改技術指標參數或調色盤顏色後，點擊「套用並儲存設定」即可立即實時更新 K 線圖與資訊列。"
-        )
-        lbl_tip.setWordWrap(True)
-        lbl_tip.setStyleSheet("color: #FFD700; font-size: 12px; background-color: #1E222A; border-radius: 6px; padding: 10px;")
-        layout.addWidget(lbl_tip)
+        scroll_layout.addWidget(box_sub_sel)
 
-        layout.addStretch()
+        # 2. 副圖技術指標自訂參數 Group Box
+        box_params = QtWidgets.QGroupBox("2. 副圖技術指標自訂參數 (Custom Indicator Parameters)")
+        g2 = QtWidgets.QGridLayout(box_params)
+
+        # MACD 參數
+        g2.addWidget(QtWidgets.QLabel("MACD 快線 (EMA Fast):"), 0, 0)
+        self.spn_macd_fast = QtWidgets.QSpinBox()
+        self.spn_macd_fast.setRange(2, 200)
+        self.spn_macd_fast.setValue(self.config.get("macd_fast", 12))
+        g2.addWidget(self.spn_macd_fast, 0, 1)
+
+        g2.addWidget(QtWidgets.QLabel("MACD 慢線 (EMA Slow):"), 0, 2)
+        self.spn_macd_slow = QtWidgets.QSpinBox()
+        self.spn_macd_slow.setRange(2, 200)
+        self.spn_macd_slow.setValue(self.config.get("macd_slow", 26))
+        g2.addWidget(self.spn_macd_slow, 0, 3)
+
+        g2.addWidget(QtWidgets.QLabel("MACD 訊號線 (Signal):"), 0, 4)
+        self.spn_macd_sig = QtWidgets.QSpinBox()
+        self.spn_macd_sig.setRange(2, 200)
+        self.spn_macd_sig.setValue(self.config.get("macd_signal", 9))
+        g2.addWidget(self.spn_macd_sig, 0, 5)
+
+        # KDJ / KD 參數
+        g2.addWidget(QtWidgets.QLabel("KDJ 週期 (N):"), 1, 0)
+        self.spn_kdj_n = QtWidgets.QSpinBox()
+        self.spn_kdj_n.setRange(2, 200)
+        self.spn_kdj_n.setValue(self.config.get("kdj_n", 9))
+        g2.addWidget(self.spn_kdj_n, 1, 1)
+
+        g2.addWidget(QtWidgets.QLabel("KDJ 平滑1 (M1):"), 1, 2)
+        self.spn_kdj_m1 = QtWidgets.QSpinBox()
+        self.spn_kdj_m1.setRange(1, 100)
+        self.spn_kdj_m1.setValue(self.config.get("kdj_m1", 3))
+        g2.addWidget(self.spn_kdj_m1, 1, 3)
+
+        g2.addWidget(QtWidgets.QLabel("KDJ 平滑2 (M2):"), 1, 4)
+        self.spn_kdj_m2 = QtWidgets.QSpinBox()
+        self.spn_kdj_m2.setRange(1, 100)
+        self.spn_kdj_m2.setValue(self.config.get("kdj_m2", 3))
+        g2.addWidget(self.spn_kdj_m2, 1, 5)
+
+        # RSI 參數
+        g2.addWidget(QtWidgets.QLabel("RSI 週期 1:"), 2, 0)
+        self.spn_rsi_p1 = QtWidgets.QSpinBox()
+        self.spn_rsi_p1.setRange(2, 200)
+        self.spn_rsi_p1.setValue(self.config.get("rsi_p1", 6))
+        g2.addWidget(self.spn_rsi_p1, 2, 1)
+
+        g2.addWidget(QtWidgets.QLabel("RSI 週期 2:"), 2, 2)
+        self.spn_rsi_p2 = QtWidgets.QSpinBox()
+        self.spn_rsi_p2.setRange(2, 200)
+        self.spn_rsi_p2.setValue(self.config.get("rsi_p2", 12))
+        g2.addWidget(self.spn_rsi_p2, 2, 3)
+
+        g2.addWidget(QtWidgets.QLabel("RSI 週期 3:"), 2, 4)
+        self.spn_rsi_p3 = QtWidgets.QSpinBox()
+        self.spn_rsi_p3.setRange(2, 200)
+        self.spn_rsi_p3.setValue(self.config.get("rsi_p3", 24))
+        g2.addWidget(self.spn_rsi_p3, 2, 5)
+
+        # Volume MA 參數
+        g2.addWidget(QtWidgets.QLabel("量均線 VMA1:"), 3, 0)
+        self.spn_vma_p1 = QtWidgets.QSpinBox()
+        self.spn_vma_p1.setRange(1, 200)
+        self.spn_vma_p1.setValue(self.config.get("vma_p1", 5))
+        g2.addWidget(self.spn_vma_p1, 3, 1)
+
+        g2.addWidget(QtWidgets.QLabel("量均線 VMA2:"), 3, 2)
+        self.spn_vma_p2 = QtWidgets.QSpinBox()
+        self.spn_vma_p2.setRange(1, 200)
+        self.spn_vma_p2.setValue(self.config.get("vma_p2", 10))
+        g2.addWidget(self.spn_vma_p2, 3, 3)
+
+        # WR & ATR & CCI 參數
+        g2.addWidget(QtWidgets.QLabel("威廉 WR 週期:"), 4, 0)
+        self.spn_wr_p = QtWidgets.QSpinBox()
+        self.spn_wr_p.setRange(2, 200)
+        self.spn_wr_p.setValue(self.config.get("wr_p", 14))
+        g2.addWidget(self.spn_wr_p, 4, 1)
+
+        g2.addWidget(QtWidgets.QLabel("ATR 週期:"), 4, 2)
+        self.spn_atr_p = QtWidgets.QSpinBox()
+        self.spn_atr_p.setRange(2, 200)
+        self.spn_atr_p.setValue(self.config.get("atr_p", 14))
+        g2.addWidget(self.spn_atr_p, 4, 3)
+
+        g2.addWidget(QtWidgets.QLabel("CCI 週期:"), 4, 4)
+        self.spn_cci_p = QtWidgets.QSpinBox()
+        self.spn_cci_p.setRange(2, 200)
+        self.spn_cci_p.setValue(self.config.get("cci_p", 14))
+        g2.addWidget(self.spn_cci_p, 4, 5)
+
+        scroll_layout.addWidget(box_params)
+
+        scroll.setWidget(scroll_content)
+        layout.addWidget(scroll)
 
     def _reset_defaults(self):
         reply = QtWidgets.QMessageBox.question(
@@ -326,6 +505,22 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
         self.config["bb_b2_style"] = self.cbo_bb_b2_sty.currentText()
         self.config["sub1_type"] = self.cbo_sub1.currentText()
         self.config["sub2_type"] = self.cbo_sub2.currentText()
+
+        # 儲存副圖指標自訂參數
+        self.config["macd_fast"] = self.spn_macd_fast.value()
+        self.config["macd_slow"] = self.spn_macd_slow.value()
+        self.config["macd_signal"] = self.spn_macd_sig.value()
+        self.config["kdj_n"] = self.spn_kdj_n.value()
+        self.config["kdj_m1"] = self.spn_kdj_m1.value()
+        self.config["kdj_m2"] = self.spn_kdj_m2.value()
+        self.config["rsi_p1"] = self.spn_rsi_p1.value()
+        self.config["rsi_p2"] = self.spn_rsi_p2.value()
+        self.config["rsi_p3"] = self.spn_rsi_p3.value()
+        self.config["vma_p1"] = self.spn_vma_p1.value()
+        self.config["vma_p2"] = self.spn_vma_p2.value()
+        self.config["wr_p"] = self.spn_wr_p.value()
+        self.config["atr_p"] = self.spn_atr_p.value()
+        self.config["cci_p"] = self.spn_cci_p.value()
 
         self.config_saved_signal.emit(self.config)
         self.accept()

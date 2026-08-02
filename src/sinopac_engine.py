@@ -404,7 +404,10 @@ class SinoPacEngine:
                 except Exception as e:
                     logging.warning(f"Shioaji KBars error for {code}: {e}")
 
-        # 若未連線 API 或 Shioaji 尚未返回數據，使用高品質高度擬真數據展示
+        # 未連線 API 時，恪遵用戶權威指示：主圖絕不繪製/展示任何雜亂擬真 K 線，保持圖表乾淨
+        if not self.is_connected:
+            return []
+
         return self._generate_fallback_kbars(code_upper, limit, cache_key)
 
     def _generate_fallback_kbars(self, code_upper: str, limit: int, cache_key: str) -> List[Dict]:

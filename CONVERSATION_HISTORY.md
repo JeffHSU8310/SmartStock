@@ -6,6 +6,31 @@
 
 ## 📜 對話紀錄歷程
 
+### 📌 [記錄時間: 2026-08-02] - 版面溢出修復 + 離線行情清空 + 主副圖獨立 Overlay 趨勢符號 (↗/↘/→) + 副圖自訂參數 (v1.0.39)
+
+- **使用者需求 (User Prompt)**:
+  - 「1.畫面跑掉了」
+  - 「2.未登入前，主圖又出現亂七八糟的K線」
+  - 「3.字體顏色都要黑色的」
+  - 「4.均線資訊，要顯示主圖區的左上，還要有符號顯示均線是上彎、下彎、持平」
+  - 「5.副圖的資訊，要顯示在各自的副圖區左上方，一樣要有符號顯示上彎、下彎、持平」
+  - 「另外，副圖的技術指標，可以自行設定參數」
+
+- **系統處理與決策 (System Action & Decision)**:
+  - 精簡 [`src/gui_host_qt.py`](file:///E:/SmartStock/src/gui_host_qt.py) 頂部 `lbl_hover_info` 為單行精美資訊，徹底解決過長文字把右側時間快選按鈕擠出螢幕的問題。
+  - 於 [`src/sinopac_engine.py`](file:///E:/SmartStock/src/sinopac_engine.py) 與 [`src/widgets/candlestick_chart.py`](file:///E:/SmartStock/src/widgets/candlestick_chart.py) 設定 `not is_connected` 時主圖嚴格不繪製任何雜亂擬真 K 線，保持圖表乾淨並呈現連線提示。
+  - 於 [`src/widgets/candlestick_chart.py`](file:///E:/SmartStock/src/widgets/candlestick_chart.py) 之 `p1` (主圖)、`p2` (副圖一)、`p3` (副圖二) 畫布分別建置獨立左上角 Overlay 標籤，並計算 `MA1~MA7` 與副圖指標相較於上一週期之斜率趨勢符號：**`↗` (上彎)**、**`↘` (下彎)**、**`→` (持平)**。
+  - 於 [`src/widgets/indicator_settings_dialog.py`](file:///E:/SmartStock/src/widgets/indicator_settings_dialog.py) 新增副圖自訂參數專區，支援 MACD (12,26,9)、KDJ (9,3,3)、RSI (6,12,24)、Volume (5,10)、WR (14)、BIAS (6,12,24)、ATR (14)、CCI (14) 數字微調器，並套用暗黑高科技 QSS 風格，貫徹淺底純黑字 (#000000) 高對比鐵律。
+  - 軟體版本由 `v1.0.38` 遞增至 `v1.0.39`（恪遵 Rule 13 `+0.0.1` 遞增規範）。
+
+- **當前專案狀態**:
+  - **本機工作目錄**: `E:\SmartStock`
+  - **軟體版本**: v1.0.39 (恪遵 Rule 13 `+0.0.1` 遞增)
+  - **GitHub 儲存庫**: `https://github.com/JeffHSU8310/SmartStock.git`
+  - **Git 分支**: main
+
+---
+
 ### 📌 [記錄時間: 2026-08-02] - 7組均線 (SMA/EMA) + 雙層布林通道 + 多副圖技術指標與調色盤選色系統 (v1.0.38)
 
 - **使用者需求 (User Prompt)**:

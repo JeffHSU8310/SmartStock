@@ -5,9 +5,9 @@ import pandas as pd
 from typing import List, Dict, Any
 
 try:
-    from src.widgets.indicator_settings_dialog import DEFAULT_INDICATOR_CONFIG, LINE_STYLES
+    from src.widgets.indicator_settings_dialog import DEFAULT_INDICATOR_CONFIG
 except ImportError:
-    from widgets.indicator_settings_dialog import DEFAULT_INDICATOR_CONFIG, LINE_STYLES
+    from widgets.indicator_settings_dialog import DEFAULT_INDICATOR_CONFIG
 
 LINE_STYLES_MAP = {
     "實線 (SolidLine)": QtCore.Qt.SolidLine,
@@ -76,8 +76,20 @@ class CandlestickItem(pg.GraphicsObject):
     def boundingRect(self):
         return QtCore.QRectF(self.picture.boundingRect())
 
+def get_trend_symbol(val: float, prev_val: float) -> str:
+    """計算數值與上一週期的斜率趨勢符號：↗ 上彎 | ↘ 下彎 | → 持平"""
+    if val is None or prev_val is None or np.isnan(val) or np.isnan(prev_val):
+        return ""
+    diff = val - prev_val
+    if diff > 1e-5:
+        return " ↗"
+    elif diff < -1e-5:
+        return " ↘"
+    else:
+        return " →"
+
 class NativeCandlestickChart(QtWidgets.QWidget):
-    """Pure Native Qt6 pyqtgraph 旗艦級 3 層 K 線圖 (支援 7 組均線 SMA/EMA、雙層布林通道、多種副圖指標 KDJ/MACD/RSI/Volume/KD/WR/BIAS/ATR/DMI/CCI)"""
+    """Pure Native Qt6 pyqtgraph 旗艦級 3 層 K 線圖 (支援主副圖左上角獨立資訊列、動態斜率趨勢符號 ↗/↘/→ 與自由參數)"""
     hover_kbar_signal = QtCore.Signal(dict)
 
     def __init__(self, parent=None):
@@ -87,7 +99,7 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.ref_price = 0.0  # ★ 當日官方參考價 (Reference Price) ★
         self.indicator_config = dict(DEFAULT_INDICATOR_CONFIG)
 
-        # 儲存計算結果 (用於 hover 顯示)
+        # 儲存計算結果 (用於 hover 顯示與斜率計算)
         self.computed_ma = []       # list of dict: {name, period, color, vals}
         self.computed_bb = {}       # {mid, u1, l1, u2, l2}
         self.computed_sub1 = {}     # {type, data_dict}
@@ -148,6 +160,15 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.vLine3 = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('#00E5FF', width=1, style=QtCore.Qt.DashLine))
         self.p3.addItem(self.vLine3, ignoreBounds=True)
 
+        # 主圖與副圖左上角獨立 Overlay 資訊標籤 (pg.TextItem)
+        self.overlay_p1 = pg.TextItem(html="", anchor=(0, 0))
+        self.overlay_p2 = pg.TextItem(html="", anchor=(0, 0))
+        self.overlay_p3 = pg.TextItem(html="", anchor=(0, 0))
+
+        self.p1.addItem(self.overlay_p1, ignoreBounds=True)
+        self.p2.addItem(self.overlay_p2, ignoreBounds=True)
+        self.p3.addItem(self.overlay_p3, ignoreBounds=True)
+
         # 綁定游標懸停事件 (實現精準吸附 K 棒)
         self.win1.scene().sigMouseMoved.connect(self.on_mouse_moved)
 
@@ -175,6 +196,9 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.p3.clear()
 
         if not kbars:
+            # 尚未連線 API 時，圖表保持乾淨，顯示清晰醒目提示
+            self.overlay_p1.setHtml("<span style='color:#FF9800; font-size:14px; font-weight:bold;'>💡 尚未連線 API：請點擊右上角「登入永豐金 API」開始載入全真行情與 K 線圖</span>")
+            self.p1.addItem(self.overlay_p1, ignoreBounds=True)
             return
 
         self.kbars_data = kbars
@@ -192,6 +216,10 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.p1.addItem(self.hLine1, ignoreBounds=True)
         self.p2.addItem(self.vLine2, ignoreBounds=True)
         self.p3.addItem(self.vLine3, ignoreBounds=True)
+
+        self.p1.addItem(self.overlay_p1, ignoreBounds=True)
+        self.p2.addItem(self.overlay_p2, ignoreBounds=True)
+        self.p3.addItem(self.overlay_p3, ignoreBounds=True)
 
         chart_data = []
         closes = []
@@ -293,11 +321,15 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         sub2_type = self.indicator_config.get("sub2_type", "MACD")
         self._render_sub_chart(self.p3, sub2_type, df, is_sub1=False)
 
-        # 6. 預設視野縮放至近 1 年 (顯示 60 根精選 K 棒)
+        # 6. 預設視野縮放至近 1 年
         self.set_view_range_months(12)
 
+        # 初始化最後一根 K 棒的 Overlay 顯示
+        if self.kbars_data:
+            self._update_overlays(len(self.kbars_data) - 1)
+
     def _render_sub_chart(self, plot_item: pg.PlotItem, indicator_name: str, df: pd.DataFrame, is_sub1: bool = True):
-        """根據選擇之技術指標渲染副圖畫布 (支援 Volume, MACD, KDJ, RSI, KD, WR, BIAS, ATR, DMI, CCI)"""
+        """根據選擇之技術指標與自訂參數渲染副圖畫布"""
         plot_item.setLabel('left', indicator_name.split()[0], color='#A0AAB8')
         s_close = df['close']
         s_open = df['open']
@@ -312,22 +344,26 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             v_colors = ['#FF3B69' if c >= o else '#00E676' for o, c in zip(s_open, s_close)]
             vol_bars = pg.BarGraphItem(x=list(range(n_bars)), height=s_vol, y0=0, width=0.5, brushes=v_colors)
             plot_item.addItem(vol_bars)
-            # 成交量均線 (MA5, MA10)
-            if len(s_vol) >= 5:
-                vma5 = list(s_vol.rolling(5).mean())
-                plot_item.plot(vma5, pen=pg.mkPen('#FFD700', width=1.2), name="VMA5")
-                store_dict["vma5"] = vma5
-            if len(s_vol) >= 10:
-                vma10 = list(s_vol.rolling(10).mean())
-                plot_item.plot(vma10, pen=pg.mkPen('#00E5FF', width=1.2), name="VMA10")
-                store_dict["vma10"] = vma10
+            vp1 = self.indicator_config.get("vma_p1", 5)
+            vp2 = self.indicator_config.get("vma_p2", 10)
+            if len(s_vol) >= vp1:
+                vma1 = list(s_vol.rolling(vp1).mean())
+                plot_item.plot(vma1, pen=pg.mkPen('#FFD700', width=1.2), name=f"VMA{vp1}")
+                store_dict[f"vma{vp1}"] = vma1
+            if len(s_vol) >= vp2:
+                vma2 = list(s_vol.rolling(vp2).mean())
+                plot_item.plot(vma2, pen=pg.mkPen('#00E5FF', width=1.2), name=f"VMA{vp2}")
+                store_dict[f"vma{vp2}"] = vma2
 
         elif "MACD" in indicator_name:
-            if len(s_close) >= 26:
-                ema12 = s_close.ewm(span=12, adjust=False).mean()
-                ema26 = s_close.ewm(span=26, adjust=False).mean()
-                dif = ema12 - ema26
-                dea = dif.ewm(span=9, adjust=False).mean()
+            fast = self.indicator_config.get("macd_fast", 12)
+            slow = self.indicator_config.get("macd_slow", 26)
+            sig = self.indicator_config.get("macd_signal", 9)
+            if len(s_close) >= slow:
+                ema_f = s_close.ewm(span=fast, adjust=False).mean()
+                ema_s = s_close.ewm(span=slow, adjust=False).mean()
+                dif = ema_f - ema_s
+                dea = dif.ewm(span=sig, adjust=False).mean()
                 macd_bar = (dif - dea) * 2.0
 
                 dif_vals, dea_vals, bar_vals = list(dif), list(dea), list(macd_bar)
@@ -341,13 +377,16 @@ class NativeCandlestickChart(QtWidgets.QWidget):
                 store_dict = {"dif": dif_vals, "dea": dea_vals, "bar": bar_vals}
 
         elif "KDJ" in indicator_name or "KD" in indicator_name:
-            if len(s_close) >= 9:
-                low_min = s_low.rolling(9).min()
-                high_max = s_high.rolling(9).max()
+            kn = self.indicator_config.get("kdj_n", 9)
+            km1 = self.indicator_config.get("kdj_m1", 3)
+            km2 = self.indicator_config.get("kdj_m2", 3)
+            if len(s_close) >= kn:
+                low_min = s_low.rolling(kn).min()
+                high_max = s_high.rolling(kn).max()
                 rsv = (s_close - low_min) / (high_max - low_min).replace(0, np.nan) * 100.0
                 rsv = rsv.fillna(50.0)
-                k_ser = rsv.ewm(com=2, adjust=False).mean()
-                d_ser = k_ser.ewm(com=2, adjust=False).mean()
+                k_ser = rsv.ewm(com=km1-1, adjust=False).mean()
+                d_ser = k_ser.ewm(com=km2-1, adjust=False).mean()
                 j_ser = 3.0 * k_ser - 2.0 * d_ser
 
                 k_vals, d_vals, j_vals = list(k_ser), list(d_ser), list(j_ser)
@@ -359,7 +398,10 @@ class NativeCandlestickChart(QtWidgets.QWidget):
                 store_dict = {"k": k_vals, "d": d_vals, "j": j_vals}
 
         elif "RSI" in indicator_name:
-            if len(s_close) >= 24:
+            rp1 = self.indicator_config.get("rsi_p1", 6)
+            rp2 = self.indicator_config.get("rsi_p2", 12)
+            rp3 = self.indicator_config.get("rsi_p3", 24)
+            if len(s_close) >= max(rp1, rp2, rp3):
                 def _calc_rsi(series, period):
                     delta = series.diff()
                     gain = delta.clip(lower=0)
@@ -369,55 +411,60 @@ class NativeCandlestickChart(QtWidgets.QWidget):
                     rs = avg_g / avg_l.replace(0, np.nan)
                     return (100.0 - (100.0 / (1.0 + rs))).fillna(50.0)
 
-                rsi6 = list(_calc_rsi(s_close, 6))
-                rsi12 = list(_calc_rsi(s_close, 12))
-                rsi24 = list(_calc_rsi(s_close, 24))
+                r1_vals = list(_calc_rsi(s_close, rp1))
+                r2_vals = list(_calc_rsi(s_close, rp2))
+                r3_vals = list(_calc_rsi(s_close, rp3))
 
-                plot_item.plot(rsi6, pen=pg.mkPen('#FFD700', width=1.5), name='RSI6')
-                plot_item.plot(rsi12, pen=pg.mkPen('#00E5FF', width=1.5), name='RSI12')
-                plot_item.plot(rsi24, pen=pg.mkPen('#E040FB', width=1.5), name='RSI24')
+                plot_item.plot(r1_vals, pen=pg.mkPen('#FFD700', width=1.5), name=f'RSI{rp1}')
+                plot_item.plot(r2_vals, pen=pg.mkPen('#00E5FF', width=1.5), name=f'RSI{rp2}')
+                plot_item.plot(r3_vals, pen=pg.mkPen('#E040FB', width=1.5), name=f'RSI{rp3}')
 
-                store_dict = {"rsi6": rsi6, "rsi12": rsi12, "rsi24": rsi24}
+                store_dict = {f"rsi{rp1}": r1_vals, f"rsi{rp2}": r2_vals, f"rsi{rp3}": r3_vals}
 
         elif "WR" in indicator_name or "威廉" in indicator_name:
-            if len(s_close) >= 14:
-                h14 = s_high.rolling(14).max()
-                l14 = s_low.rolling(14).min()
-                wr = (h14 - s_close) / (h14 - l14).replace(0, np.nan) * 100.0
+            wp = self.indicator_config.get("wr_p", 14)
+            if len(s_close) >= wp:
+                h_n = s_high.rolling(wp).max()
+                l_n = s_low.rolling(wp).min()
+                wr = (h_n - s_close) / (h_n - l_n).replace(0, np.nan) * 100.0
                 wr_vals = list(wr.fillna(0.0))
-                plot_item.plot(wr_vals, pen=pg.mkPen('#00E5FF', width=1.5), name='WR14')
+                plot_item.plot(wr_vals, pen=pg.mkPen('#00E5FF', width=1.5), name=f'WR{wp}')
                 store_dict = {"wr": wr_vals}
 
         elif "BIAS" in indicator_name or "乖離率" in indicator_name:
-            if len(s_close) >= 24:
-                b6 = list(((s_close - s_close.rolling(6).mean()) / s_close.rolling(6).mean() * 100.0).fillna(0.0))
-                b12 = list(((s_close - s_close.rolling(12).mean()) / s_close.rolling(12).mean() * 100.0).fillna(0.0))
-                b24 = list(((s_close - s_close.rolling(24).mean()) / s_close.rolling(24).mean() * 100.0).fillna(0.0))
+            bp1 = self.indicator_config.get("bias_p1", 6)
+            bp2 = self.indicator_config.get("bias_p2", 12)
+            bp3 = self.indicator_config.get("bias_p3", 24)
+            if len(s_close) >= max(bp1, bp2, bp3):
+                b1 = list(((s_close - s_close.rolling(bp1).mean()) / s_close.rolling(bp1).mean() * 100.0).fillna(0.0))
+                b2 = list(((s_close - s_close.rolling(bp2).mean()) / s_close.rolling(bp2).mean() * 100.0).fillna(0.0))
+                b3 = list(((s_close - s_close.rolling(bp3).mean()) / s_close.rolling(bp3).mean() * 100.0).fillna(0.0))
 
-                plot_item.plot(b6, pen=pg.mkPen('#FFD700', width=1.5), name='BIAS6')
-                plot_item.plot(b12, pen=pg.mkPen('#00E5FF', width=1.5), name='BIAS12')
-                plot_item.plot(b24, pen=pg.mkPen('#E040FB', width=1.5), name='BIAS24')
-                store_dict = {"bias6": b6, "bias12": b12, "bias24": b24}
+                plot_item.plot(b1, pen=pg.mkPen('#FFD700', width=1.5), name=f'BIAS{bp1}')
+                plot_item.plot(b2, pen=pg.mkPen('#00E5FF', width=1.5), name=f'BIAS{bp2}')
+                plot_item.plot(b3, pen=pg.mkPen('#E040FB', width=1.5), name=f'BIAS{bp3}')
+                store_dict = {f"bias{bp1}": b1, f"bias{bp2}": b2, f"bias{bp3}": b3}
 
         elif "ATR" in indicator_name or "真實區間" in indicator_name:
-            if len(s_close) >= 14:
+            ap = self.indicator_config.get("atr_p", 14)
+            if len(s_close) >= ap:
                 prev_c = s_close.shift(1)
                 tr = pd.concat([s_high - s_low, (s_high - prev_c).abs(), (s_low - prev_c).abs()], axis=1).max(axis=1)
-                atr = list(tr.rolling(14).mean().fillna(0.0))
-                plot_item.plot(atr, pen=pg.mkPen('#00E5FF', width=1.5), name='ATR14')
+                atr = list(tr.rolling(ap).mean().fillna(0.0))
+                plot_item.plot(atr, pen=pg.mkPen('#00E5FF', width=1.5), name=f'ATR{ap}')
                 store_dict = {"atr": atr}
 
         elif "CCI" in indicator_name:
-            if len(s_close) >= 14:
+            cp = self.indicator_config.get("cci_p", 14)
+            if len(s_close) >= cp:
                 tp = (s_high + s_low + s_close) / 3.0
-                ma_tp = tp.rolling(14).mean()
-                md = (tp - ma_tp).abs().rolling(14).mean()
+                ma_tp = tp.rolling(cp).mean()
+                md = (tp - ma_tp).abs().rolling(cp).mean()
                 cci = list(((tp - ma_tp) / (0.015 * md.replace(0, np.nan))).fillna(0.0))
-                plot_item.plot(cci, pen=pg.mkPen('#FF9800', width=1.5), name='CCI14')
+                plot_item.plot(cci, pen=pg.mkPen('#FF9800', width=1.5), name=f'CCI{cp}')
                 store_dict = {"cci": cci}
 
         else:
-            # 預設副圖降級顯示成交量
             v_colors = ['#FF3B69' if c >= o else '#00E676' for o, c in zip(s_open, s_close)]
             vol_bars = pg.BarGraphItem(x=list(range(n_bars)), height=s_vol, y0=0, width=0.5, brushes=v_colors)
             plot_item.addItem(vol_bars)
@@ -426,6 +473,78 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             self.computed_sub1 = {"type": indicator_name, "data": store_dict}
         else:
             self.computed_sub2 = {"type": indicator_name, "data": store_dict}
+
+    def _update_overlays(self, idx: int):
+        """更新主圖與副圖左上角獨立 Overlay 資訊標籤 (含 ↗ 上彎 / ↘ 下彎 / → 持平 趨勢符號)"""
+        if not self.kbars_data or idx < 0 or idx >= len(self.kbars_data):
+            return
+
+        # 1. 更新主圖左上角 Overlay (MA 均線與布林通道 + 斜率趨勢)
+        ma_parts = []
+        for item in self.computed_ma:
+            v_list = item["vals"]
+            if idx < len(v_list) and not np.isnan(v_list[idx]):
+                curr_v = v_list[idx]
+                prev_v = v_list[idx-1] if idx > 0 else None
+                trend = get_trend_symbol(curr_v, prev_v)
+                col = item["color"]
+                m_name = item["name"]
+                ma_parts.append(f"<span style='color:{col}; font-weight:bold;'>{m_name}:{curr_v:.2f}{trend}</span>")
+
+        if self.computed_bb:
+            mid_l = self.computed_bb.get("mid", [])
+            u1_l = self.computed_bb.get("u1", [])
+            l1_l = self.computed_bb.get("l1", [])
+            if idx < len(mid_l) and not np.isnan(mid_l[idx]):
+                trend_mid = get_trend_symbol(mid_l[idx], mid_l[idx-1] if idx > 0 else None)
+                ma_parts.append(f"<span style='color:#FFD700; font-weight:bold;'>BB_Mid:{mid_l[idx]:.2f}{trend_mid}</span>")
+                if idx < len(u1_l) and not np.isnan(u1_l[idx]):
+                    ma_parts.append(f"<span style='color:#00E5FF;'>Up1:{u1_l[idx]:.2f} Low1:{l1_l[idx]:.2f}</span>")
+
+        html_p1 = " &nbsp;&nbsp; ".join(ma_parts)
+        self.overlay_p1.setHtml(f"<div style='background-color:rgba(18,20,24,0.75); padding:2px 6px; border-radius:4px; font-size:12px;'>{html_p1}</div>")
+        rect1 = self.p1.vb.viewRect()
+        self.overlay_p1.setPos(rect1.left(), rect1.top())
+
+        # 2. 更新副圖一左上角 Overlay
+        sub1_parts = []
+        s1_type = self.computed_sub1.get("type", "成交量").split()[0]
+        sub1_parts.append(f"<span style='color:#00E5FF; font-weight:bold;'>[{s1_type}]</span>")
+
+        if "成交量" in s1_type or "Volume" in s1_type:
+            vol_val = self.kbars_data[idx]['volume']
+            sub1_parts.append(f"量: {vol_val:,}")
+
+        d1 = self.computed_sub1.get("data", {})
+        for k_key, v_arr in d1.items():
+            if idx < len(v_arr) and not np.isnan(v_arr[idx]):
+                curr_v = v_arr[idx]
+                prev_v = v_arr[idx-1] if idx > 0 else None
+                trend = get_trend_symbol(curr_v, prev_v)
+                sub1_parts.append(f"{k_key.upper()}:{curr_v:.2f}{trend}")
+
+        html_p2 = " &nbsp;&nbsp; ".join(sub1_parts)
+        self.overlay_p2.setHtml(f"<div style='background-color:rgba(18,20,24,0.75); padding:2px 6px; border-radius:4px; font-size:12px;'>{html_p2}</div>")
+        rect2 = self.p2.vb.viewRect()
+        self.overlay_p2.setPos(rect2.left(), rect2.top())
+
+        # 3. 更新副圖二左上角 Overlay
+        sub2_parts = []
+        s2_type = self.computed_sub2.get("type", "MACD").split()[0]
+        sub2_parts.append(f"<span style='color:#00E5FF; font-weight:bold;'>[{s2_type}]</span>")
+
+        d2 = self.computed_sub2.get("data", {})
+        for k_key, v_arr in d2.items():
+            if idx < len(v_arr) and not np.isnan(v_arr[idx]):
+                curr_v = v_arr[idx]
+                prev_v = v_arr[idx-1] if idx > 0 else None
+                trend = get_trend_symbol(curr_v, prev_v)
+                sub2_parts.append(f"{k_key.upper()}:{curr_v:.2f}{trend}")
+
+        html_p3 = " &nbsp;&nbsp; ".join(sub2_parts)
+        self.overlay_p3.setHtml(f"<div style='background-color:rgba(18,20,24,0.75); padding:2px 6px; border-radius:4px; font-size:12px;'>{html_p3}</div>")
+        rect3 = self.p3.vb.viewRect()
+        self.overlay_p3.setPos(rect3.left(), rect3.top())
 
     def set_view_range_months(self, months: int):
         """修正時間快選按鈕：縮放 X 軸並針對可視區域自適應 Y 軸"""
@@ -452,8 +571,10 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             max_v = max(vols) if vols else 1000
             self.p2.setYRange(0, max_v * 1.1, padding=0)
 
+            self._update_overlays(total_cnt - 1)
+
     def on_mouse_moved(self, pos):
-        """游標懸停處理：X 軸精準吸附至 K 棒正中央 round(mouse_x) 並匯出所有指標數據」"""
+        """游標懸停處理：X 軸精準吸附至 K 棒正中央 round(mouse_x) 並實時更新獨立 Overlay"""
         if not self.kbars_data:
             return
 
@@ -483,43 +604,8 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             change = close_p - base_price
             pct_change = (change / base_price * 100.0) if base_price != 0 else 0.0
 
-            # 抓取該索引點上所有啟用的 MA 數值
-            ma_snapshot = []
-            for item in self.computed_ma:
-                v_list = item["vals"]
-                if idx < len(v_list) and not np.isnan(v_list[idx]):
-                    ma_snapshot.append({
-                        "name": item["name"],
-                        "val": v_list[idx],
-                        "color": item["color"]
-                    })
-
-            # 抓取布林通道數值
-            bb_snapshot = {}
-            if self.computed_bb:
-                mid_l = self.computed_bb.get("mid", [])
-                u1_l = self.computed_bb.get("u1", [])
-                l1_l = self.computed_bb.get("l1", [])
-                if idx < len(mid_l) and not np.isnan(mid_l[idx]):
-                    bb_snapshot = {
-                        "mid": mid_l[idx],
-                        "u1": u1_l[idx] if idx < len(u1_l) else None,
-                        "l1": l1_l[idx] if idx < len(l1_l) else None
-                    }
-
-            # 抓取副圖一數值
-            sub1_snapshot = {"type": self.computed_sub1.get("type", ""), "vals": {}}
-            d1 = self.computed_sub1.get("data", {})
-            for k_key, v_arr in d1.items():
-                if idx < len(v_arr) and not np.isnan(v_arr[idx]):
-                    sub1_snapshot["vals"][k_key] = v_arr[idx]
-
-            # 抓取副圖二數值
-            sub2_snapshot = {"type": self.computed_sub2.get("type", ""), "vals": {}}
-            d2 = self.computed_sub2.get("data", {})
-            for k_key, v_arr in d2.items():
-                if idx < len(v_arr) and not np.isnan(v_arr[idx]):
-                    sub2_snapshot["vals"][k_key] = v_arr[idx]
+            # 更新主副圖左上角獨立 Overlay
+            self._update_overlays(idx)
 
             info = {
                 "datetime": kb['datetime'],
@@ -529,10 +615,6 @@ class NativeCandlestickChart(QtWidgets.QWidget):
                 "close": close_p,
                 "change": change,
                 "pct_change": pct_change,
-                "volume": vol,
-                "ma_list": ma_snapshot,
-                "bb_info": bb_snapshot,
-                "sub1_info": sub1_snapshot,
-                "sub2_info": sub2_snapshot
+                "volume": vol
             }
             self.hover_kbar_signal.emit(info)
