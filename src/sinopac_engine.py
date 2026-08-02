@@ -295,6 +295,7 @@ class SinoPacEngine:
     def get_realtime_quotes(self, code_list: List[str] = None) -> List[Dict]:
         """
         取得實時成交與參考價報價 (100% 恪遵 Rule 22 全真實券商行情數據金律)
+        若盤後或無即時快照，自動使用券商官方最新日 K 棒收盤價與參考價對齊。
         """
         if code_list is None:
             code_list = ["IX0001", "IX0043", "TX00", "2330", "2317", "2454", "2308", "2382", "0050", "0056"]
@@ -303,59 +304,92 @@ class SinoPacEngine:
         if not self.is_connected or not self.api:
             return results
 
-        code_map = {}
-        try:
-            contracts = []
-            for req_code in code_list:
-                c = self.get_contract(req_code)
-                if c:
-                    contracts.append(c)
-                    c_code = getattr(c, "code", "")
-                    code_map[c_code] = req_code
-                    code_map[req_code] = req_code
+        snap_map = {}
+        contracts = []
 
-            if contracts:
+        for req_code in code_list:
+            c = self.get_contract(req_code)
+            if c:
+                contracts.append(c)
+
+        if contracts:
+            try:
                 snaps = self.api.snapshots(contracts)
                 for snap in snaps:
                     snap_code = getattr(snap, "code", "")
+                    snap_map[snap_code] = snap
+            except Exception as e:
+                logging.warning(f"Shioaji snapshots exception: {e}")
+
+        for req_code in code_list:
+            c = self.get_contract(req_code)
+            c_code = getattr(c, "code", "") if c else req_code
+            snap = snap_map.get(c_code) or snap_map.get(req_code)
+
+            display_name = self.get_symbol_name(req_code)
+
+            c_close = 0.0
+            ref_price = 0.0
+            c_change = 0.0
+            c_pct = 0.0
+            vol = 0
+            amt_str = ""
+
+            if snap:
+                c_close = float(getattr(snap, "close", 0.0))
+                raw_ref = float(getattr(snap, "reference_price", 0.0))
+                raw_chg = float(getattr(snap, "change_price", 0.0))
+                raw_pct = float(getattr(snap, "change_rate", 0.0))
+                vol = int(getattr(snap, "total_volume", getattr(snap, "volume", 0)))
+                amt = float(getattr(snap, "total_amount", 0.0))
+                if amt > 0:
+                    amt_str = f"{amt / 1e8:.1f}億"
+
+                # 精準參考價定位算法 (優先度: reference_price -> close - change_price -> open)
+                if raw_ref > 0:
+                    ref_price = raw_ref
+                elif c_close > 0 and raw_chg != 0:
+                    ref_price = c_close - raw_chg
+                elif c_close > 0:
+                    ref_price = float(getattr(snap, "open", c_close))
+
+                if c_close > 0 and ref_price > 0:
+                    c_change = c_close - ref_price
+                    c_pct = (c_change / ref_price) * 100.0
+                elif raw_chg != 0 or raw_pct != 0:
+                    c_change = raw_chg
+                    c_pct = raw_pct
+
+            # 萬一盤後/離線/無快照導致 c_close 仍為 0，則從券商官方最新 2 根 K 棒對齊真實收盤價與參考價！
+            if c_close <= 0 or ref_price <= 0:
+                kbars = self.get_kbars(req_code, ktype="Day", limit=2)
+                if len(kbars) >= 1:
+                    last_kb = kbars[-1]
+                    c_close = last_kb['close']
+                    vol = vol if vol > 0 else last_kb['volume']
                     
-                    target_code = code_map.get(snap_code, snap_code)
-                    if snap_code in ["001", "0001", "TSE001"]:
-                        target_code = "IX0001"
-                    elif snap_code in ["101", "0043", "OTC101"]:
-                        target_code = "IX0043"
-                    elif snap_code in ["TXFR1", "TXF"]:
-                        target_code = "TX00"
+                    if len(kbars) >= 2:
+                        prev_kb = kbars[-2]
+                        ref_price = prev_kb['close']
+                    else:
+                        ref_price = last_kb['open']
 
-                    display_name = self.get_symbol_name(target_code)
-
-                    c_close = float(getattr(snap, "close", 0.0))
-                    ref_price = float(getattr(snap, "reference_price", getattr(snap, "open", c_close)))
-
-                    if ref_price > 0 and c_close > 0:
+                    if ref_price > 0:
                         c_change = c_close - ref_price
                         c_pct = (c_change / ref_price) * 100.0
-                    else:
-                        c_change = float(getattr(snap, "change_price", 0.0))
-                        c_pct = float(getattr(snap, "change_rate", 0.0))
 
-                    vol = int(getattr(snap, "total_volume", getattr(snap, "volume", 0)))
-                    amt = float(getattr(snap, "total_amount", 0.0))
-                    amt_str = f"{amt / 1e8:.1f}億" if amt > 0 else ""
-
-                    results.append({
-                        "code": target_code,
-                        "name": display_name,
-                        "price": c_close,
-                        "ref_price": ref_price,
-                        "change": c_change,
-                        "pct_change": c_pct,
-                        "volume": vol,
-                        "amount_str": amt_str,
-                        "is_realtime": True
-                    })
-        except Exception as e:
-            logging.warning(f"get_realtime_quotes error: {e}")
+            if c_close > 0:
+                results.append({
+                    "code": req_code,
+                    "name": display_name,
+                    "price": c_close,
+                    "ref_price": ref_price,
+                    "change": c_change,
+                    "pct_change": c_pct,
+                    "volume": vol,
+                    "amount_str": amt_str,
+                    "is_realtime": True
+                })
 
         return results
 
