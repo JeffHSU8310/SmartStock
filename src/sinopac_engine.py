@@ -206,7 +206,7 @@ class SinoPacEngine:
         return None
 
     def get_contract(self, code: str):
-        """全面防爆獲取官方正確 Shioaji Contract 物件 (支援股票、大盤加權指數 IX0001/001、櫃買指數 IX0043/101、台指期貨 TXFR1)"""
+        """全面防爆獲取官方正確 Shioaji Contract 物件 (支援 api.contracts.get 官方檢索與字典層級安全提取)"""
         if not self.api or not self.is_connected:
             return None
 
@@ -214,53 +214,68 @@ class SinoPacEngine:
         if code_upper in self.contracts_cache:
             return self.contracts_cache[code_upper]
 
-        try:
-            contracts_obj = getattr(self.api, "Contracts", None)
-            if not contracts_obj:
-                return None
+        # 1. 建立代碼轉換對照集 (包含 Shioaji 官方合約代碼 001, 101, TXFR1)
+        candidate_codes = [code_upper]
+        if code_upper in ["IX0001", "TSE", "加權指數", "001"]:
+            candidate_codes = ["001", "0001", "IX0001", "TSE001", "TSE0001", "0000"]
+        elif code_upper in ["IX0043", "OTC", "櫃買指數", "101"]:
+            candidate_codes = ["101", "0043", "IX0043", "OTC101", "OTC0043"]
+        elif code_upper in ["TX00", "TXF", "TXFR1", "TXRF1", "台指期"]:
+            candidate_codes = ["TXFR1", "TXF", "TXF202608", "TXF202609"]
 
+        # 2. 優先嘗試 Shioaji 官方原生 api.contracts.get(code)
+        contracts_api = getattr(self.api, "contracts", None) or getattr(self.api, "Contracts", None)
+        if contracts_api and hasattr(contracts_api, "get"):
+            for c_code in candidate_codes:
+                try:
+                    c = contracts_api.get(c_code)
+                    if c and self._safe_has_code(c):
+                        self.contracts_cache[code_upper] = c
+                        return c
+                except Exception:
+                    pass
+
+        # 3. 備用方案：深層次遍歷 Shioaji Contracts 物件屬性結構
+        contracts_obj = getattr(self.api, "Contracts", None)
+        if contracts_obj:
             contract = None
-
-            # 1. 處理加權指數 (IX0001 / TSE / 001)
-            if code_upper in ["IX0001", "TSE", "加權指數", "001", "0001"]:
-                for index_attr in ["Indexs", "Indices"]:
+            if code_upper in ["IX0001", "TSE", "加權指數", "001"]:
+                for index_attr in ["Indexs", "Indices", "indexs", "indices"]:
                     indices = getattr(contracts_obj, index_attr, None)
-                    if indices and hasattr(indices, "TSE"):
-                        contract = self._extract_contract(indices.TSE, ["001", "0001", "IX0001", "TSE001", "TSE0001", "0000"], ["加權", "發行量"])
+                    if indices and (hasattr(indices, "TSE") or hasattr(indices, "tse")):
+                        tse = getattr(indices, "TSE", None) or getattr(indices, "tse", None)
+                        contract = self._extract_contract(tse, candidate_codes, ["加權", "發行量"])
                         if contract:
                             break
 
-            # 2. 處理櫃買指數 (IX0043 / OTC / 101)
-            elif code_upper in ["IX0043", "OTC", "櫃買指數", "101", "0043"]:
-                for index_attr in ["Indexs", "Indices"]:
+            elif code_upper in ["IX0043", "OTC", "櫃買指數", "101"]:
+                for index_attr in ["Indexs", "Indices", "indexs", "indices"]:
                     indices = getattr(contracts_obj, index_attr, None)
-                    if indices and hasattr(indices, "OTC"):
-                        contract = self._extract_contract(indices.OTC, ["101", "0043", "IX0043", "OTC101", "OTC0043"], ["櫃買"])
+                    if indices and (hasattr(indices, "OTC") or hasattr(indices, "otc")):
+                        otc = getattr(indices, "OTC", None) or getattr(indices, "otc", None)
+                        contract = self._extract_contract(otc, candidate_codes, ["櫃買"])
                         if contract:
                             break
 
-            # 3. 處理台指期貨 (TX00 / TXF / TXFR1)
             elif code_upper in ["TX00", "TXF", "TXFR1", "TXRF1", "台指期"]:
-                fut = getattr(contracts_obj, "Futures", None)
-                if fut and hasattr(fut, "TXF"):
-                    contract = self._extract_contract(fut.TXF, ["TXFR1", "TXF", "TXF202608", "TXF202609"], ["台指期", "全月"])
+                fut = getattr(contracts_obj, "Futures", None) or getattr(contracts_obj, "futures", None)
+                if fut and (hasattr(fut, "TXF") or hasattr(fut, "txf")):
+                    txf = getattr(fut, "TXF", None) or getattr(fut, "txf", None)
+                    contract = self._extract_contract(txf, candidate_codes, ["台指期", "全月"])
 
-            # 4. 處理一般個股 (2330, 2454 等)
             else:
-                stk = getattr(contracts_obj, "Stocks", None)
+                stk = getattr(contracts_obj, "Stocks", None) or getattr(contracts_obj, "stocks", None)
                 if stk:
-                    for market_name in ["TSE", "OTC"]:
+                    for market_name in ["TSE", "OTC", "tse", "otc"]:
                         m_obj = getattr(stk, market_name, None)
                         if m_obj:
-                            contract = self._extract_contract(m_obj, [code_upper], None)
+                            contract = self._extract_contract(m_obj, candidate_codes, None)
                             if contract:
                                 break
 
             if contract and self._safe_has_code(contract):
                 self.contracts_cache[code_upper] = contract
                 return contract
-        except Exception as e:
-            logging.warning(f"get_contract error for {code}: {e}")
 
         return None
 
