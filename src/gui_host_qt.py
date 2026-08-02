@@ -20,6 +20,7 @@ try:
     from src.widgets.order_toolbar import OrderToolbarWidget
     from src.widgets.message_console import MessageConsoleWidget
     from src.widgets.auth_dialog import AuthDialog
+    from src.widgets.indicator_settings_dialog import IndicatorSettingsDialog
     from src.utils.config_manager import ConfigManager
 except ImportError:
     from sinopac_engine import SinoPacEngine
@@ -29,6 +30,7 @@ except ImportError:
     from widgets.order_toolbar import OrderToolbarWidget
     from widgets.message_console import MessageConsoleWidget
     from widgets.auth_dialog import AuthDialog
+    from widgets.indicator_settings_dialog import IndicatorSettingsDialog
     from utils.config_manager import ConfigManager
 
 class ClickableIndexBanner(QtWidgets.QLabel):
@@ -48,10 +50,10 @@ class ClickableIndexBanner(QtWidgets.QLabel):
         super().mousePressEvent(event)
 
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.37)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.38)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.37 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.38 (Pure Native Qt6)")
         self.resize(1520, 940)
 
         self.current_code = "2330"
@@ -362,6 +364,13 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
             self.period_buttons[text] = btn
             kline_header.addWidget(btn)
 
+        kline_header.addWidget(QtWidgets.QLabel("|"))
+
+        btn_indicator = QtWidgets.QPushButton("⚙️ 技術指標設定")
+        btn_indicator.setStyleSheet("background-color: #0066FF; color: #FFFFFF; font-weight: bold; padding: 4px 12px;")
+        btn_indicator.clicked.connect(self.open_indicator_settings)
+        kline_header.addWidget(btn_indicator)
+
         kline_layout.addLayout(kline_header)
 
         self.lbl_hover_info = QtWidgets.QLabel("💡 尚未連線 API：請點擊右上角「登入永豐金 API」開始載入全真行情與 K 線圖")
@@ -664,17 +673,57 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.chart_widget.set_data(kbars)
         self.chart_widget.set_view_range_months(self.current_range_months)
 
+    def open_indicator_settings(self):
+        """彈出技術指標與顏色詳細設定視窗"""
+        dlg = IndicatorSettingsDialog(self.chart_widget.indicator_config, self)
+        dlg.config_saved_signal.connect(self.chart_widget.set_indicator_config)
+        dlg.exec()
+
     def on_hover_kbar(self, info: dict):
         color = "#FF3B69" if info['change'] >= 0 else "#00E676"
         arrow = "▲" if info['change'] >= 0 else "▼"
 
-        text = (
-            f"<span style='color:#00E5FF; font-weight:bold;'>{self.current_code} {self.current_name}</span> | "
-            f"時間: {info['datetime']} | "
-            f"開: {info['open']:.2f} | 高: {info['high']:.2f} | 低: {info['low']:.2f} | 收: {info['close']:.2f} | "
-            f"漲跌: <span style='color:{color}; font-weight:bold;'>{arrow} {abs(info['change']):.2f} ({arrow} {abs(info['pct_change']):.2f}%)</span> | "
+        # 1. 基礎價量與漲跌資訊
+        parts = [
+            f"<span style='color:#00E5FF; font-weight:bold;'>{self.current_code} {self.current_name}</span>",
+            f"時間: {info['datetime']}",
+            f"開: {info['open']:.2f}",
+            f"高: {info['high']:.2f}",
+            f"低: {info['low']:.2f}",
+            f"收: {info['close']:.2f}",
+            f"漲跌: <span style='color:{color}; font-weight:bold;'>{arrow} {abs(info['change']):.2f} ({arrow} {abs(info['pct_change']):.2f}%)</span>",
             f"量: {info['volume']:,} {self._get_volume_unit()}"
-        )
+        ]
+
+        # 2. 移動平均線資訊 (MA1 ~ MA7 動態顏色顯示)
+        ma_list = info.get("ma_list", [])
+        for ma in ma_list:
+            parts.append(f"<span style='color:{ma['color']}; font-weight:bold;'>{ma['name']}:{ma['val']:.2f}</span>")
+
+        # 3. 布林通道資訊
+        bb = info.get("bb_info", {})
+        if bb and bb.get("mid") is not None:
+            parts.append(f"<span style='color:#FFD700; font-weight:bold;'>BB_Mid:{bb['mid']:.2f}</span>")
+            if bb.get("u1") is not None and bb.get("l1") is not None:
+                parts.append(f"<span style='color:#00E5FF;'>Up1:{bb['u1']:.2f} Low1:{bb['l1']:.2f}</span>")
+
+        # 4. 副圖一指標資訊
+        sub1 = info.get("sub1_info", {})
+        if sub1 and sub1.get("vals"):
+            s_name = sub1.get("type", "").split()[0]
+            s_str = " ".join([f"{k.upper()}:{v:.2f}" for k, v in sub1["vals"].items()])
+            if s_str:
+                parts.append(f"<span style='color:#A0AAB8;'>[{s_name}] {s_str}</span>")
+
+        # 5. 副圖二指標資訊
+        sub2 = info.get("sub2_info", {})
+        if sub2 and sub2.get("vals"):
+            s_name = sub2.get("type", "").split()[0]
+            s_str = " ".join([f"{k.upper()}:{v:.2f}" for k, v in sub2["vals"].items()])
+            if s_str:
+                parts.append(f"<span style='color:#A0AAB8;'>[{s_name}] {s_str}</span>")
+
+        text = " | ".join(parts)
         self.lbl_hover_info.setText(text)
 
     def _get_volume_unit(self) -> str:

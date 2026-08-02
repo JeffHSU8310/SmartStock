@@ -6,6 +6,28 @@
 
 ## 📜 對話紀錄歷程
 
+### 📌 [記錄時間: 2026-08-02] - 7組均線 (SMA/EMA) + 雙層布林通道 + 多副圖技術指標與調色盤選色系統 (v1.0.38)
+
+- **使用者需求 (User Prompt)**:
+  - 「1.均線的資訊不見了」
+  - 「2.增加主圖指標選項&副圖指標選項」
+  - 「3.主圖指標有均線(SMA、EMA)，要有七組可以設定，線型顏色可以設定、參數可以設定。還有布林指標(上限&下限&中線的參數友都可以自行設定，然後，上限跟下限要有個兩組)，線型顏色可以設定。線型可以有多種線型(實線、需線、鍊線....等)，顏色可以用調色盤選擇。」
+  - 「4.副圖指標有KDJ、MACD、RSI還有其他看盤軟體有的技術指標都要包含」
+
+- **系統處理與決策 (System Action & Decision)**:
+  - 新增 [`src/widgets/indicator_settings_dialog.py`](file:///E:/SmartStock/src/widgets/indicator_settings_dialog.py)：實作 `IndicatorSettingsDialog` 與 `ColorButton` 顏色調色盤選色器，支援 7 組均線 (SMA/EMA)、雙層布林通道 (Middle, Upper1/Lower1, Upper2/Lower2) 與副圖指標選單。
+  - 全面升級 [`src/widgets/candlestick_chart.py`](file:///E:/SmartStock/src/widgets/candlestick_chart.py)：指標繪製與計算引擎支援 7 組均線 (實線/虛線/點線/點劃線與獨立顏色) 以及 `Volume`, `MACD`, `KDJ`, `RSI`, `KD`, `WR`, `BIAS`, `ATR`, `CCI` 等技術指標繪製。
+  - 於 [`src/gui_host_qt.py`](file:///E:/SmartStock/src/gui_host_qt.py) 增加「⚙️ 技術指標設定」按鈕，並修復 `on_hover_kbar` 懸停資訊列，依據各指標設定色彩動態輸出 `MA1~MA7`、`Bollinger Bands` 與副圖指標數值。
+  - 軟體版本由 `v1.0.37` 遞增至 `v1.0.38`（恪遵 Rule 13 `+0.0.1` 遞增規範）。
+
+- **當前專案狀態**:
+  - **本機工作目錄**: `E:\SmartStock`
+  - **軟體版本**: v1.0.38 (恪遵 Rule 13 `+0.0.1` 遞增)
+  - **GitHub 儲存庫**: `https://github.com/JeffHSU8310/SmartStock.git`
+  - **Git 分支**: main
+
+---
+
 ### 📌 [記錄時間: 2026-08-02] - 頂部大盤三大指數點擊切換主圖 K 線圖功能 (v1.0.37)
 
 - **使用者需求 (User Prompt)**:
