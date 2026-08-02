@@ -4,6 +4,22 @@
 
 ---
 
+## [v1.0.41] - 2026-08-02
+
+### 🎯 100% 券商真實數據金律 (Rule 22) + 徹底廢除假數據 + 布林通道第一層第二層獨立啟用 (v1.0.41)
+- **寫入 Rule 22 重點規則 ([PROJECT_RULES.md](file:///E:/SmartStock/PROJECT_RULES.md))**：
+  - 增設最高原則 **Rule 22（100% 券商真實數據金律）**：本系統所有行情與指標分析 100% 必須自永豐金 API 下載真實數據，嚴禁生成任何 1 筆虛擬/假數據！
+- **徹底廢除擬真/合成數據 ([src/sinopac_engine.py](file:///E:/SmartStock/src/sinopac_engine.py))**：
+  - 徹底停用與廢除 `_generate_fallback_kbars`！若 API 未連線或無交易數據時，嚴格回傳 `[]`（空列表），主圖保持乾淨並提示警示文字。
+- **加權指數/櫃買指數/台指期全真實數據合約搜尋重構 ([src/sinopac_engine.py](file:///E:/SmartStock/src/sinopac_engine.py))**：
+  - 實作 Shioaji `api.Contracts.Indexs` / `api.Contracts.Indices` (TSE/OTC) 與 `Futures.TXF` 之全屬性動態遍歷 (Iterative Contract Search)，確保 100% 成功取得官方真實合約並下載實時歷史數據。
+- **布林通道第一層與第二層獨立啟用 CheckBox ([src/widgets/indicator_settings_dialog.py](file:///E:/SmartStock/src/widgets/indicator_settings_dialog.py), [src/widgets/candlestick_chart.py](file:///E:/SmartStock/src/widgets/candlestick_chart.py))**：
+  - 新增 `chk_bb_b1` (啟用第一層通道 Upper1/Lower1) 與 `chk_bb_b2` (啟用第二層通道 Upper2/Lower2) 獨立勾選控制項。
+- **版本規範**：
+  - 版號升級至 v1.0.41，嚴格遵守 Rule 13 (+0.0.1)。
+
+---
+
 ## [v1.0.40] - 2026-08-02
 
 ### 🎯 期貨10年數據 + 大盤指數解析修復 + 主副圖 Overlay 釘選 + 布林獨立4條上下限 + 全指標 JSON 永久儲存 (v1.0.40)

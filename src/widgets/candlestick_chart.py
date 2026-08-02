@@ -319,18 +319,27 @@ class NativeCandlestickChart(QtWidgets.QWidget):
                 mid_pen = pg.mkPen(self.indicator_config.get("bb_mid_color", "#FFD700"), width=1.5, style=LINE_STYLES_MAP.get(self.indicator_config.get("bb_mid_style", "實線 (SolidLine)"), QtCore.Qt.SolidLine))
                 self.p1.plot(mid_vals, pen=mid_pen, name=f"BB_Mid({bb_period})")
 
+                bb_b1_enabled = self.indicator_config.get("bb_b1_enabled", True)
+                bb_b2_enabled = self.indicator_config.get("bb_b2_enabled", True)
+
                 # 畫第一層獨立 Upper1/Lower1
-                b1_pen = pg.mkPen(self.indicator_config.get("bb_b1_color", "#00E5FF"), width=1.2, style=LINE_STYLES_MAP.get(self.indicator_config.get("bb_b1_style", "虛線 (DashLine)"), QtCore.Qt.DashLine))
-                self.p1.plot(u1_vals, pen=b1_pen, name=f"BB_Upper1({bb_u1_k}σ)")
-                self.p1.plot(l1_vals, pen=b1_pen, name=f"BB_Lower1({bb_l1_k}σ)")
+                if bb_b1_enabled:
+                    b1_pen = pg.mkPen(self.indicator_config.get("bb_b1_color", "#00E5FF"), width=1.2, style=LINE_STYLES_MAP.get(self.indicator_config.get("bb_b1_style", "虛線 (DashLine)"), QtCore.Qt.DashLine))
+                    self.p1.plot(u1_vals, pen=b1_pen, name=f"BB_Upper1({bb_u1_k}σ)")
+                    self.p1.plot(l1_vals, pen=b1_pen, name=f"BB_Lower1({bb_l1_k}σ)")
 
                 # 畫第二層獨立 Upper2/Lower2
-                b2_pen = pg.mkPen(self.indicator_config.get("bb_b2_color", "#E040FB"), width=1.2, style=LINE_STYLES_MAP.get(self.indicator_config.get("bb_b2_style", "點劃線 (DashDotLine)"), QtCore.Qt.DashDotLine))
-                self.p1.plot(u2_vals, pen=b2_pen, name=f"BB_Upper2({bb_u2_k}σ)")
-                self.p1.plot(l2_vals, pen=b2_pen, name=f"BB_Lower2({bb_l2_k}σ)")
+                if bb_b2_enabled:
+                    b2_pen = pg.mkPen(self.indicator_config.get("bb_b2_color", "#E040FB"), width=1.2, style=LINE_STYLES_MAP.get(self.indicator_config.get("bb_b2_style", "點劃線 (DashDotLine)"), QtCore.Qt.DashDotLine))
+                    self.p1.plot(u2_vals, pen=b2_pen, name=f"BB_Upper2({bb_u2_k}σ)")
+                    self.p1.plot(l2_vals, pen=b2_pen, name=f"BB_Lower2({bb_l2_k}σ)")
 
                 self.computed_bb = {
-                    "mid": mid_vals, "u1": u1_vals, "l1": l1_vals, "u2": u2_vals, "l2": l2_vals,
+                    "mid": mid_vals,
+                    "u1": u1_vals if bb_b1_enabled else [],
+                    "l1": l1_vals if bb_b1_enabled else [],
+                    "u2": u2_vals if bb_b2_enabled else [],
+                    "l2": l2_vals if bb_b2_enabled else [],
                     "u1_k": bb_u1_k, "l1_k": bb_l1_k, "u2_k": bb_u2_k, "l2_k": bb_l2_k
                 }
 

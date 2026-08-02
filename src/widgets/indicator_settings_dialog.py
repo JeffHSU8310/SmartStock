@@ -28,6 +28,9 @@ DEFAULT_INDICATOR_CONFIG = {
     ],
     "bb_enabled": True,
     "bb_period": 20,
+    # 布林通道 第一層與第二層獨立啟用 CheckBox
+    "bb_b1_enabled": True,
+    "bb_b2_enabled": True,
     # 布林通道 4 條獨立倍數設定 (Upper1, Lower1, Upper2, Lower2)
     "bb_u1_k": 1.0,
     "bb_l1_k": 1.0,
@@ -108,13 +111,13 @@ class ColorButton(QtWidgets.QPushButton):
             self.color_changed.emit(self._color)
 
 class IndicatorSettingsDialog(QtWidgets.QDialog):
-    """技術指標詳細設定視窗 (支援 7 組均線 SMA/EMA、布林通道獨立 4 上下限倍數、副圖指標與持久化)"""
+    """技術指標詳細設定視窗 (支援 7 組均線 SMA/EMA、布林第一層第二層獨立啟用、獨立 4 上下限倍數與持久化)"""
     config_saved_signal = QtCore.Signal(dict)
 
     def __init__(self, current_config: Dict[str, Any] = None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("⚙️ 技術指標詳細設定與顏色調色盤 (Indicator Settings v1.0.40)")
-        self.resize(860, 720)
+        self.setWindowTitle("⚙️ 技術指標詳細設定與顏色調色盤 (Indicator Settings v1.0.41)")
+        self.resize(880, 750)
         self.config = load_indicator_config_from_json()
         if current_config:
             self.config.update(current_config)
@@ -210,7 +213,7 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
         # Tab 1: 主圖指標設定
         tab_main = QtWidgets.QWidget()
         self._setup_main_indicators_tab(tab_main)
-        self.tabs.addTab(tab_main, "📈 主圖指標設定 (7組均線 / 布林四條獨立上下限)")
+        self.tabs.addTab(tab_main, "📈 主圖指標設定 (7組均線 / 布林第一層與第二層獨立啟用)")
 
         # Tab 2: 副圖指標設定
         tab_sub = QtWidgets.QWidget()
@@ -310,11 +313,11 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
         layout_ma.addLayout(grid_ma)
         scroll_layout.addWidget(box_ma)
 
-        # 2. 布林通道 Group Box (支援獨立 4 條上限/下限倍數)
-        box_bb = QtWidgets.QGroupBox("2. 布林通道指標 (Bollinger Bands - 四條獨立上限與下限)")
+        # 2. 布林通道 Group Box (支援第一層與第二層獨立啟用 Checkbox)
+        box_bb = QtWidgets.QGroupBox("2. 布林通道指標 (Bollinger Bands - 支援第一層與第二層獨立勾選啟用)")
         layout_bb = QtWidgets.QVBoxLayout(box_bb)
 
-        self.chk_bb_master = QtWidgets.QCheckBox("顯示布林通道 (Enable Bollinger Bands)")
+        self.chk_bb_master = QtWidgets.QCheckBox("顯示布林通道主開關 (Enable Bollinger Bands)")
         self.chk_bb_master.setChecked(self.config.get("bb_enabled", True))
         self.chk_bb_master.setStyleSheet("font-weight: bold; color: #00E5FF;")
         layout_bb.addWidget(self.chk_bb_master)
@@ -327,60 +330,70 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
         self.spn_bb_period.setValue(self.config.get("bb_period", 20))
         grid_bb.addWidget(self.spn_bb_period, 0, 1)
 
-        # 第一層獨立上限與下限倍數
-        grid_bb.addWidget(QtWidgets.QLabel("第一層上限倍數 (Upper 1 K):"), 1, 0)
+        # 第一層獨立啟用與獨立倍數
+        self.chk_bb_b1 = QtWidgets.QCheckBox("啟用第一層通道 (Upper1/Lower1)")
+        self.chk_bb_b1.setChecked(self.config.get("bb_b1_enabled", True))
+        self.chk_bb_b1.setStyleSheet("font-weight: bold; color: #00E5FF;")
+        grid_bb.addWidget(self.chk_bb_b1, 1, 0, 1, 2)
+
+        grid_bb.addWidget(QtWidgets.QLabel("第一層上限倍數 (Upper 1 K):"), 2, 0)
         self.spn_bb_u1_k = QtWidgets.QDoubleSpinBox()
         self.spn_bb_u1_k.setRange(0.1, 10.0)
         self.spn_bb_u1_k.setSingleStep(0.1)
         self.spn_bb_u1_k.setValue(self.config.get("bb_u1_k", 1.0))
-        grid_bb.addWidget(self.spn_bb_u1_k, 1, 1)
+        grid_bb.addWidget(self.spn_bb_u1_k, 2, 1)
 
-        grid_bb.addWidget(QtWidgets.QLabel("第一層下限倍數 (Lower 1 K):"), 1, 2)
+        grid_bb.addWidget(QtWidgets.QLabel("第一層下限倍數 (Lower 1 K):"), 2, 2)
         self.spn_bb_l1_k = QtWidgets.QDoubleSpinBox()
         self.spn_bb_l1_k.setRange(0.1, 10.0)
         self.spn_bb_l1_k.setSingleStep(0.1)
         self.spn_bb_l1_k.setValue(self.config.get("bb_l1_k", 1.0))
-        grid_bb.addWidget(self.spn_bb_l1_k, 1, 3)
+        grid_bb.addWidget(self.spn_bb_l1_k, 2, 3)
 
-        # 第二層獨立上限與下限倍數
-        grid_bb.addWidget(QtWidgets.QLabel("第二層上限倍數 (Upper 2 K):"), 2, 0)
+        # 第二層獨立啟用與獨立倍數
+        self.chk_bb_b2 = QtWidgets.QCheckBox("啟用第二層通道 (Upper2/Lower2)")
+        self.chk_bb_b2.setChecked(self.config.get("bb_b2_enabled", True))
+        self.chk_bb_b2.setStyleSheet("font-weight: bold; color: #E040FB;")
+        grid_bb.addWidget(self.chk_bb_b2, 3, 0, 1, 2)
+
+        grid_bb.addWidget(QtWidgets.QLabel("第二層上限倍數 (Upper 2 K):"), 4, 0)
         self.spn_bb_u2_k = QtWidgets.QDoubleSpinBox()
         self.spn_bb_u2_k.setRange(0.1, 10.0)
         self.spn_bb_u2_k.setSingleStep(0.1)
         self.spn_bb_u2_k.setValue(self.config.get("bb_u2_k", 2.0))
-        grid_bb.addWidget(self.spn_bb_u2_k, 2, 1)
+        grid_bb.addWidget(self.spn_bb_u2_k, 4, 1)
 
-        grid_bb.addWidget(QtWidgets.QLabel("第二層下限倍數 (Lower 2 K):"), 2, 2)
+        grid_bb.addWidget(QtWidgets.QLabel("第二層下限倍數 (Lower 2 K):"), 4, 2)
         self.spn_bb_l2_k = QtWidgets.QDoubleSpinBox()
         self.spn_bb_l2_k.setRange(0.1, 10.0)
         self.spn_bb_l2_k.setSingleStep(0.1)
         self.spn_bb_l2_k.setValue(self.config.get("bb_l2_k", 2.0))
-        grid_bb.addWidget(self.spn_bb_l2_k, 2, 3)
+        grid_bb.addWidget(self.spn_bb_l2_k, 4, 3)
 
         # 線條色彩與線型
-        grid_bb.addWidget(QtWidgets.QLabel("中線 (Middle MA):"), 3, 0)
+        grid_bb.addWidget(QtWidgets.QLabel("中線 (Middle MA):"), 5, 0)
         self.btn_bb_mid_col = ColorButton(self.config.get("bb_mid_color", "#FFD700"))
         self.cbo_bb_mid_sty = QtWidgets.QComboBox()
         self.cbo_bb_mid_sty.addItems(LINE_STYLE_NAMES)
         self.cbo_bb_mid_sty.setCurrentText(self.config.get("bb_mid_style", "實線 (SolidLine)"))
-        grid_bb.addWidget(self.btn_bb_mid_col, 3, 1)
-        grid_bb.addWidget(self.cbo_bb_mid_sty, 3, 2, 1, 2)
+        grid_bb.addWidget(self.btn_bb_mid_col, 5, 1)
+        grid_bb.addWidget(self.cbo_bb_mid_sty, 5, 2, 1, 2)
 
-        grid_bb.addWidget(QtWidgets.QLabel("第一層通道 (Upper1/Lower1):"), 4, 0)
+        grid_bb.addWidget(QtWidgets.QLabel("第一層通道 (Upper1/Lower1):"), 6, 0)
         self.btn_bb_b1_col = ColorButton(self.config.get("bb_b1_color", "#00E5FF"))
         self.cbo_bb_b1_sty = QtWidgets.QComboBox()
         self.cbo_bb_b1_sty.addItems(LINE_STYLE_NAMES)
         self.cbo_bb_b1_sty.setCurrentText(self.config.get("bb_b1_style", "虛線 (DashLine)"))
-        grid_bb.addWidget(self.btn_bb_b1_col, 4, 1)
-        grid_bb.addWidget(self.cbo_bb_b1_sty, 4, 2, 1, 2)
+        grid_bb.addWidget(self.btn_bb_b1_col, 6, 1)
+        grid_bb.addWidget(self.cbo_bb_b1_sty, 6, 2, 1, 2)
 
-        grid_bb.addWidget(QtWidgets.QLabel("第二層通道 (Upper2/Lower2):"), 5, 0)
+        grid_bb.addWidget(QtWidgets.QLabel("第二層通道 (Upper2/Lower2):"), 7, 0)
         self.btn_bb_b2_col = ColorButton(self.config.get("bb_b2_color", "#E040FB"))
         self.cbo_bb_b2_sty = QtWidgets.QComboBox()
         self.cbo_bb_b2_sty.addItems(LINE_STYLE_NAMES)
         self.cbo_bb_b2_sty.setCurrentText(self.config.get("bb_b2_style", "點劃線 (DashDotLine)"))
-        grid_bb.addWidget(self.btn_bb_b2_col, 5, 1)
-        grid_bb.addWidget(self.cbo_bb_b2_sty, 5, 2, 1, 2)
+        grid_bb.addWidget(self.btn_bb_b2_col, 7, 1)
+        grid_bb.addWidget(self.cbo_bb_b2_sty, 7, 2, 1, 2)
 
         layout_bb.addLayout(grid_bb)
         scroll_layout.addWidget(box_bb)
@@ -545,7 +558,9 @@ class IndicatorSettingsDialog(QtWidgets.QDialog):
         self.config["bb_enabled"] = self.chk_bb_master.isChecked()
         self.config["bb_period"] = self.spn_bb_period.value()
 
-        # 布林通道 4 條獨立倍數設定
+        # 布林通道 第一層與第二層獨立啟用與獨立倍數
+        self.config["bb_b1_enabled"] = self.chk_bb_b1.isChecked()
+        self.config["bb_b2_enabled"] = self.chk_bb_b2.isChecked()
         self.config["bb_u1_k"] = self.spn_bb_u1_k.value()
         self.config["bb_l1_k"] = self.spn_bb_l1_k.value()
         self.config["bb_u2_k"] = self.spn_bb_u2_k.value()

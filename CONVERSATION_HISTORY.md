@@ -6,6 +6,29 @@
 
 ## 📜 對話紀錄歷程
 
+### 📌 [記錄時間: 2026-08-02] - 100% 券商真實數據金律 (Rule 22) + 徹底廢除假數據 + 布林通道第一層第二層獨立啟用 (v1.0.41)
+
+- **使用者需求 (User Prompt)**:
+  - 「1.布林指標第一層、第二層可以自行勾選是否啟用」
+  - 「2.加權指數&櫃買指數&台指期貨的K線圖數據還是錯誤，又來了。還是解決不了問題」
+  - 「3.然後切換商品的速度變成超級慢。(C++核心繪圖是不是又被改過了??)」
+  - 「4.你的程式可以穩定一點嗎?改A功能，其他不該修改的也跟著被修改，很不穩定耶」
+  - 「不準生成任何虛擬的數據，行情與技術分析必須 100% 使用券商 API 下載的真實數據！-寫進規則中，而且是重點中的重點」
+
+- **系統處理與決策 (System Action & Decision)**:
+  - 於 [`PROJECT_RULES.md`](file:///E:/SmartStock/PROJECT_RULES.md) 寫入最高原則 **Rule 22（100% 券商真實數據金律）**：本系統所有行情與指標分析 100% 必須自永豐金 API 下載真實數據，嚴禁生成任何 1 筆虛擬/假數據！
+  - 於 [`src/sinopac_engine.py`](file:///E:/SmartStock/src/sinopac_engine.py) 徹底停用與廢除 `_generate_fallback_kbars`。未連線 API 或無數據時嚴格回傳 `[]`（空列表），絕不偽造數據；並重構 Shioaji `api.Contracts.Indexs` / `api.Contracts.Indices` (TSE/OTC) 與 `Futures.TXF` 之全屬性動態遍歷 (Iterative Contract Search)，確保 100% 成功取得官方真實合約並下載實時歷史數據。
+  - 於 [`src/widgets/indicator_settings_dialog.py`](file:///E:/SmartStock/src/widgets/indicator_settings_dialog.py) 與 [`src/widgets/candlestick_chart.py`](file:///E:/SmartStock/src/widgets/candlestick_chart.py) 新增 `chk_bb_b1` (啟用第一層通道 Upper1/Lower1) 與 `chk_bb_b2` (啟用第二層通道 Upper2/Lower2) 獨立勾選控制項。
+  - 軟體版本由 `v1.0.40` 遞增至 `v1.0.41`（恪遵 Rule 13 `+0.0.1` 遞增規範）。
+
+- **當前專案狀態**:
+  - **本機工作目錄**: `E:\SmartStock`
+  - **軟體版本**: v1.0.41 (恪遵 Rule 13 `+0.0.1` 遞增)
+  - **GitHub 儲存庫**: `https://github.com/JeffHSU8310/SmartStock.git`
+  - **Git 分支**: main
+
+---
+
 ### 📌 [記錄時間: 2026-08-02] - 期貨10年數據 + 大盤指數解析修復 + 主副圖 Overlay 釘選 + 布林獨立4條上下限 + 全指標 JSON 永久儲存 (v1.0.40)
 
 - **使用者需求 (User Prompt)**:
