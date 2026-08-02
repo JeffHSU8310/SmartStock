@@ -6,6 +6,25 @@
 
 ## 📜 對話紀錄歷程
 
+### 📌 [記錄時間: 2026-08-02] - 頂部大盤三大指數點擊切換主圖 K 線圖功能 (v1.0.37)
+
+- **使用者需求 (User Prompt)**:
+  - 「點擊打勾的指數&台指期，也可以跟其他商品一樣在主圖中看到K線圖」
+
+- **系統處理與決策 (System Action & Decision)**:
+  - 於 [`src/gui_host_qt.py`](file:///E:/SmartStock/src/gui_host_qt.py) 實作 `ClickableIndexBanner` 類別，為頂部「加權指數 (`IX0001`)」、「櫃買指數 (`IX0043`)」與「台指期貨 (`TX00`)」標籤加入手指游標 Hover 提示與點擊事件。
+  - 點擊三大指數 Banner 任何一區，立即觸發 `on_stock_changed(code, name)` 切換主圖 K 線、均線、成交量與 MACD。
+  - 於 [`src/sinopac_engine.py`](file:///E:/SmartStock/src/sinopac_engine.py) 擴充 `_generate_fallback_kbars` 支援 `IX0001` (43,119.75)、`IX0043` (347.85) 與 `TX00` (42,650.00)，無論 API 連線與否皆能順暢顯示高擬真 K 線圖。
+  - 軟體版本由 `v1.0.36` 遞增至 `v1.0.37`（恪遵 Rule 13 `+0.0.1` 遞增規範）。
+
+- **當前專案狀態**:
+  - **本機工作目錄**: `E:\SmartStock`
+  - **軟體版本**: v1.0.37 (恪遵 Rule 13 `+0.0.1` 遞增)
+  - **GitHub 儲存庫**: `https://github.com/JeffHSU8310/SmartStock.git`
+  - **Git 分支**: main
+
+---
+
 ### 📌 [記錄時間: 2026-08-02] - 新增跨 AI 模型無條件讀取與遵守專案規則 Rule 21 (v1.0.36)
 
 - **使用者需求 (User Prompt)**:

@@ -4,6 +4,19 @@
 
 ---
 
+## [v1.0.37] - 2026-08-02
+
+### 🎯 頂部大盤三大指數 (加權指數 / 櫃買指數 / 台指期貨) 點擊切換主圖 K 線圖功能 (v1.0.37)
+- **大盤 Banner 點擊互動 ([src/gui_host_qt.py](file:///E:/SmartStock/src/gui_host_qt.py))**：
+  - 新增 `ClickableIndexBanner` 類別，為頂部「加權指數 (`IX0001`)」、「櫃買指數 (`IX0043`)」、「台指期貨 (`TX00`)」加入手勢指標與點擊事件。
+  - 點擊三大指數 Banner 任何一區，即可立即切換主圖 K 線圖、均線、成交量與 MACD 指標至對應指數。
+- **全動態 Fallback K 線渲染 ([src/sinopac_engine.py](file:///E:/SmartStock/src/sinopac_engine.py))**：
+  - 擴充 `_generate_fallback_kbars` 支援 `IX0001` (43,119.75 點)、`IX0043` (347.85 點) 與 `TX00` (42,650.00 點) 之 K 線模擬，確保不論 API 連線或離線皆能順暢顯示高擬真 K 線圖。
+- **版本規範**：
+  - 版號升級至 v1.0.37，嚴格遵守 Rule 13 (+0.0.1)。
+
+---
+
 ## [v1.0.36] - 2026-08-02
 
 ### 🎯 跨 AI 模型 (Claude / GPT / Gemini 等) 無條件自動讀取與恪遵專案規則規範 (v1.0.36)

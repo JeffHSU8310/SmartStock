@@ -31,11 +31,27 @@ except ImportError:
     from widgets.auth_dialog import AuthDialog
     from utils.config_manager import ConfigManager
 
+class ClickableIndexBanner(QtWidgets.QLabel):
+    """可點擊的大盤與期貨 Banner 標籤 (支援點擊立即切換主圖 K 線)"""
+    clicked_signal = QtCore.Signal(str, str)
+
+    def __init__(self, code: str, name: str, parent=None):
+        super().__init__(parent)
+        self.code = code
+        self.name = name
+        self.setCursor(QtCore.Qt.PointingHandCursor)
+        self.setToolTip(f"💡 點擊切換主圖 K 線至【{name} ({code})】")
+
+    def mousePressEvent(self, event):
+        if event.button() == QtCore.Qt.LeftButton:
+            self.clicked_signal.emit(self.code, self.name)
+        super().mousePressEvent(event)
+
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.36)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.37)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.36 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.37 (Pure Native Qt6)")
         self.resize(1520, 940)
 
         self.current_code = "2330"
@@ -131,17 +147,16 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         QMessageBox QPushButton {
             background-color: #0066FF;
             color: #FFFFFF;
-            border-radius: 4px;
+            border-radius: 6px;
             padding: 6px 16px;
-            min-width: 60px;
+            font-weight: bold;
         }
         QComboBox {
             background-color: #1E222A;
+            color: #FFFFFF;
             border: 1px solid #2C323F;
             border-radius: 6px;
-            padding: 6px 10px;
-            color: #FFFFFF;
-            font-weight: bold;
+            padding: 4px 8px;
         }
         QComboBox QAbstractItemView {
             background-color: #16191E;
@@ -227,16 +242,16 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         # 頂部 Header Banner
         header = QtWidgets.QHBoxLayout()
-        title_label = QtWidgets.QLabel("📈 SmartStock 量化交易 v1.0.36")
+        title_label = QtWidgets.QLabel("📈 SmartStock 量化交易 v1.0.37")
         title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #00E5FF;")
         header.addWidget(title_label)
 
         header.addSpacing(15)
 
-        # 大盤三大指數即時快報 Banner (明確透明標註 [模擬展示] 或 [全真實盤])
-        self.lbl_tse_index = self._create_index_banner("加權指數", "43,119.75 漲跌: +3,186.45 (+7.97%) 總成交量: 8,337.1 億", "#FF3B69")
-        self.lbl_otc_index = self._create_index_banner("櫃買指數", "347.85 漲跌: +21.62 (+6.62%) 總成交量: 1,344.4 億", "#FF3B69")
-        self.lbl_txf_index = self._create_index_banner("台指期貨", "42,650.00 漲跌: -1,077.00 (-2.46%) 總成交量: 171,373 口", "#00E676")
+        # 大盤三大指數即時快報 Banner (點擊即可切換主圖 K 線圖)
+        self.lbl_tse_index = self._create_index_banner("IX0001", "加權指數", "43,119.75 漲跌: +3,186.45 (+7.97%) 總成交量: 8,337.1 億", "#FF3B69")
+        self.lbl_otc_index = self._create_index_banner("IX0043", "櫃買指數", "347.85 漲跌: +21.62 (+6.62%) 總成交量: 1,344.4 億", "#FF3B69")
+        self.lbl_txf_index = self._create_index_banner("TX00", "台指期貨", "42,650.00 漲跌: -1,077.00 (-2.46%) 總成交量: 171,373 口", "#00E676")
 
         header.addWidget(self.lbl_tse_index)
         header.addWidget(self.lbl_otc_index)
@@ -258,9 +273,23 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self._build_screener_tab()
         self._build_backtest_tab()
 
-    def _create_index_banner(self, title: str, text: str, color: str) -> QtWidgets.QLabel:
-        lbl = QtWidgets.QLabel(f"<span style='color:#8C9BAE; font-weight:bold;'>{title}:</span> <span style='color:{color}; font-weight:bold;'>{text}</span>")
-        lbl.setStyleSheet("background-color: #1E222A; border: 1px solid #2C323F; border-radius: 6px; padding: 4px 10px; font-size: 12px;")
+    def _create_index_banner(self, code: str, title: str, text: str, color: str) -> ClickableIndexBanner:
+        lbl = ClickableIndexBanner(code, title, self)
+        lbl.setText(f"<span style='color:#8C9BAE; font-weight:bold;'>{title}:</span> <span style='color:{color}; font-weight:bold;'>{text}</span>")
+        lbl.setStyleSheet("""
+            QLabel {
+                background-color: #1E222A;
+                border: 1px solid #2C323F;
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 12px;
+            }
+            QLabel:hover {
+                border: 1px solid #00E5FF;
+                background-color: #262D3A;
+            }
+        """)
+        lbl.clicked_signal.connect(self.on_stock_changed)
         return lbl
 
     def _build_market_overview_tab(self):
