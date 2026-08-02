@@ -17,54 +17,121 @@ except ImportError:
     logging.warning("Shioaji API SDK 未安裝 (請使用 pip install shioaji)")
 
 class SinoPacEngine:
-    """永豐金證券 Shioaji API 量化行情與交易引擎 (100% 全真實券商數據金律 - 絕不造假)"""
+    """永豐金證券 Shioaji API 量化行情與交易引擎 (100% 恪遵 Rule 22 券商真實數據金律)"""
 
     def __init__(self, simulation: bool = True):
         self.simulation = simulation
         self.api = None
         self.is_connected = False
+        self.is_ca_active = False
         self.active_account = None
         
         self.sub_callbacks = []
         self.quote_cache = {}
         self.contracts_cache = {}
         self.kbars_cache = {}
+        self._init_shioaji()
+
+    def _init_shioaji(self):
+        try:
+            if SHIOAJI_AVAILABLE:
+                self.api = sj.Shioaji(simulation=self.simulation)
+                logging.info("Shioaji API SDK 初始化完成")
+        except Exception as e:
+            logging.error(f"Shioaji API 初始化失敗: {e}")
+            self.api = None
 
     def connect(self, api_key: str = "", secret_key: str = "") -> bool:
-        """登入永豐金 Shioaji API 並下載官方股票、期貨、指數字典與憑證"""
-        if not SHIOAJI_AVAILABLE:
+        """登入永豐金 Shioaji API 並下載官方股票、期貨、指數字典」"""
+        if not SHIOAJI_AVAILABLE or not self.api:
             logging.error("無法連線：未安裝 Shioaji SDK")
             return False
 
         try:
-            self.api = sj.Shioaji(simulation=self.simulation)
             if api_key and secret_key:
-                self.api.login(api_key=api_key, secret_key=secret_key)
+                accounts = self.api.login(api_key=api_key, secret_key=secret_key, subscribe_trade=False)
             else:
-                self.api.login(
+                accounts = self.api.login(
                     api_key=os.getenv("SHIOAJI_API_KEY", "DEMO_KEY"),
-                    secret_key=os.getenv("SHIOAJI_SECRET_KEY", "DEMO_SECRET")
+                    secret_key=os.getenv("SHIOAJI_SECRET_KEY", "DEMO_SECRET"),
+                    subscribe_trade=False
                 )
             
             self.is_connected = True
-            accounts = self.api.list_accounts()
             if accounts:
                 self.active_account = accounts[0]
             
-            logging.info("Shioaji API 成功登入，已下載官方合約與即時報價字典")
+            try:
+                self.api.fetch_contracts()
+                logging.info("Shioaji 官方合約字典下載完成！")
+            except Exception as fc_err:
+                logging.warning(f"fetch_contracts 警示: {fc_err}")
+
+            logging.info("Shioaji API 成功登入")
             return True
         except Exception as e:
             logging.error(f"Shioaji API 登入失敗: {e}")
             self.is_connected = False
             return False
 
-    def disconnect(self):
+    def login_with_ca(self, api_key: str, secret_key: str, ca_path: str = "", ca_password: str = "", person_id: str = "") -> Dict:
+        """永豐金 API 登入與 CA 憑證激活 (SinoPac Shioaji CA Auth)"""
+        if not self.api:
+            self._init_shioaji()
+
+        if not self.api:
+            return {"status": "error", "message": "Shioaji API SDK 未能正確載入"}
+
+        try:
+            accounts = self.api.login(
+                api_key=api_key,
+                secret_key=secret_key,
+                subscribe_trade=False
+            )
+            self.is_connected = True
+            self.kbars_cache.clear()
+            self.contracts_cache.clear()
+
+            try:
+                self.api.fetch_contracts()
+                logging.info("Shioaji 官方合約字典下載完成！")
+            except Exception as fc_err:
+                logging.warning(f"fetch_contracts 警示: {fc_err}")
+
+            if ca_path and os.path.exists(ca_path) and ca_password and person_id:
+                try:
+                    res = self.api.activate_ca(
+                        ca_path=ca_path,
+                        ca_passwd=ca_password,
+                        person_id=person_id
+                    )
+                    self.is_ca_active = True
+                    logging.info(f"CA 憑證激活成功: {res}")
+                except Exception as ca_err:
+                    logging.warning(f"CA 憑證激活警示: {ca_err}")
+
+            return {
+                "status": "success",
+                "message": "永豐金 API 連線成功！" + (" (憑證已激活)" if self.is_ca_active else " (無憑證)"),
+                "accounts": [str(acc) for acc in accounts] if accounts else []
+            }
+        except Exception as e:
+            logging.error(f"永豐金 API 登入失敗: {e}")
+            return {"status": "error", "message": f"登入失敗: {str(e)}"}
+
+    def logout(self):
+        """登出永豐金 API"""
         if self.api and self.is_connected:
             try:
                 self.api.logout()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Shioaji Logout Exception: {e}")
         self.is_connected = False
+        self.is_ca_active = False
+        self.kbars_cache.clear()
+
+    def disconnect(self):
+        self.logout()
 
     def get_accounts(self) -> List[str]:
         if self.is_connected and self.api:
@@ -202,8 +269,13 @@ class SinoPacEngine:
         }
         return common_names.get(code, f"股票 {code}")
 
-    def fetch_snapshots(self, code_list: List[str]) -> List[Dict]:
-        """極速實時 Snapshot 快照獲取 (全真實券商行情數據)"""
+    def get_realtime_quotes(self, code_list: List[str] = None) -> List[Dict]:
+        """
+        取得實時成交與參考價報價 (100% 恪遵 Rule 22 全真實券商行情數據金律)
+        """
+        if code_list is None:
+            code_list = ["IX0001", "IX0043", "TX00", "2330", "2317", "2454", "2308", "2382", "0050", "0056"]
+
         results = []
         if not self.is_connected or not self.api:
             return results
@@ -219,30 +291,41 @@ class SinoPacEngine:
                 snaps = self.api.snapshots(contracts)
                 for snap in snaps:
                     c_code = getattr(snap, "code", "")
-                    c_name = self.get_symbol_name(c_code)
-                    close_p = getattr(snap, "close", 0.0)
-                    ref_p = getattr(snap, "reference_price", getattr(snap, "open", close_p))
-                    change = close_p - ref_p if ref_p > 0 else 0.0
-                    pct_change = (change / ref_p * 100.0) if ref_p > 0 else 0.0
-                    vol = getattr(snap, "total_volume", getattr(snap, "volume", 0))
-                    amt = getattr(snap, "total_amount", 0)
+                    display_code = "TX00" if c_code in ["TXFR1", "TXF"] else c_code
+                    display_name = self.get_symbol_name(display_code)
+
+                    c_close = float(getattr(snap, "close", 0.0))
+                    ref_price = float(getattr(snap, "reference_price", getattr(snap, "open", c_close)))
+
+                    if ref_price > 0 and c_close > 0:
+                        c_change = c_close - ref_price
+                        c_pct = (c_change / ref_price) * 100.0
+                    else:
+                        c_change = float(getattr(snap, "change_price", 0.0))
+                        c_pct = float(getattr(snap, "change_rate", 0.0))
+
+                    vol = int(getattr(snap, "total_volume", getattr(snap, "volume", 0)))
+                    amt = float(getattr(snap, "total_amount", 0.0))
                     amt_str = f"{amt / 1e8:.1f}億" if amt > 0 else ""
 
                     results.append({
-                        "code": c_code,
-                        "name": c_name,
-                        "price": close_p,
-                        "ref_price": ref_p,
-                        "change": change,
-                        "pct_change": pct_change,
+                        "code": display_code if display_code else code,
+                        "name": display_name,
+                        "price": c_close,
+                        "ref_price": ref_price,
+                        "change": c_change,
+                        "pct_change": c_pct,
                         "volume": vol,
                         "amount_str": amt_str,
                         "is_realtime": True
                     })
         except Exception as e:
-            logging.warning(f"fetch_snapshots error: {e}")
+            logging.warning(f"get_realtime_quotes error: {e}")
 
         return results
+
+    def fetch_snapshots(self, code_list: List[str]) -> List[Dict]:
+        return self.get_realtime_quotes(code_list)
 
     def _resample_dataframe(self, df: pd.DataFrame, ktype: str, is_futures: bool = False) -> pd.DataFrame:
         """Pandas 金融級 K 棒多週期重採樣引擎"""
