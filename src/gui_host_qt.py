@@ -32,10 +32,10 @@ except ImportError:
     from utils.config_manager import ConfigManager
 
 class SmartStockMainWindow(QtWidgets.QMainWindow):
-    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.34)"""
+    """SmartStock 純原生 Qt6 量化桌面主視窗 (Pure Native Desktop Application v1.0.36)"""
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.34 (Pure Native Qt6)")
+        self.setWindowTitle("SmartStock 智慧型量化交易與選股平台 v1.0.36 (Pure Native Qt6)")
         self.resize(1520, 940)
 
         self.current_code = "2330"
@@ -45,6 +45,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         self.current_range_months = 12
         self.period_buttons = {}
         self.range_buttons = {}
+        self.ref_price_cache = {}  # ★ 各商品當日參考價快取 (由 refresh_realtime_quotes 更新) ★
 
         self.engine = SinoPacEngine()
         self.dll = self._load_cpp_dll()
@@ -226,7 +227,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         # 頂部 Header Banner
         header = QtWidgets.QHBoxLayout()
-        title_label = QtWidgets.QLabel("📈 SmartStock 量化交易 v1.0.32")
+        title_label = QtWidgets.QLabel("📈 SmartStock 量化交易 v1.0.36")
         title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #00E5FF;")
         header.addWidget(title_label)
 
@@ -311,7 +312,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
         kline_header.addStretch()
 
         range_periods = [
-            ("6個月", 6), ("1年", 12), ("2年", 24), ("5年", 60), ("10年", 120)
+            ("6個月", 6), ("1年", 12), ("2年", 24)
         ]
         for text, months in range_periods:
             btn = QtWidgets.QPushButton(text)
@@ -538,10 +539,20 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
             # 2. 刷新自選股表格價格
             self.watchlist_widget.update_quote(q['code'], q['price'], q['pct_change'], q.get('name', ''))
 
+            # ★ 快取各商品的當日參考價 (用於 K 線圖 hover 漲跌計算) ★
+            rp = q.get('ref_price', 0.0)
+            if rp > 0:
+                self.ref_price_cache[code] = rp
+
         # 3. 刷新五檔委買賣價
         current_quote = next((q for q in quotes if q['code'] == self.current_code), None)
         if current_quote and current_quote['price'] > 0:
             self.five_bids_widget.set_mock_bids(self.current_code, current_quote['price'])
+
+            # ★ 將當前商品參考價傳入 Chart Widget ★
+            crp = self.ref_price_cache.get(self.current_code, 0.0)
+            if crp > 0:
+                self.chart_widget.set_ref_price(crp)
             self.order_toolbar_widget.set_symbol(self.current_code, current_quote['price'])
             
             real_name = current_quote.get('name', '')
@@ -556,6 +567,15 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
     def on_stock_changed(self, code: str, name: str = ""):
         """★ 毫秒級極速切換：0 秒流暢切換，絕不卡頓 15 秒 ★"""
         self.current_code = code
+
+        # ★ 成交量單位判斷：期貨→口, 指數→億, 股票整股→張, 零股→股 ★
+        def _vol_unit(c: str) -> str:
+            if c.startswith("TX") or c.startswith("MX") or c.startswith("TM") or c.endswith("F1"):
+                return "口"
+            elif c.startswith("IX"):
+                return "億"
+            else:
+                return "張"
         
         real_name = self.engine.get_symbol_name(code)
         if real_name and not real_name.startswith("股票 "):
@@ -574,8 +594,16 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
 
         if kbars:
             last_kb = kbars[-1]
-            chg = last_kb['close'] - last_kb['open']
-            pct = (chg / last_kb['open'] * 100.0) if last_kb['open'] != 0 else 0.0
+            # ★ 漲跌使用當天官方參考價 (Reference Price)，無參考價時退回前一根收盤 ★
+            ref_p = self.ref_price_cache.get(code, 0.0)
+            if ref_p > 0:
+                base_price = ref_p
+            elif len(kbars) >= 2:
+                base_price = kbars[-2]['close']
+            else:
+                base_price = last_kb['open']
+            chg = last_kb['close'] - base_price
+            pct = (chg / base_price * 100.0) if base_price != 0 else 0.0
             color = "#FF3B69" if chg >= 0 else "#00E676"
             arrow = "▲" if chg >= 0 else "▼"
             init_text = (
@@ -583,7 +611,7 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
                 f"時間: {last_kb['datetime']} | "
                 f"開: {last_kb['open']:.2f} | 高: {last_kb['high']:.2f} | 低: {last_kb['low']:.2f} | 收: {last_kb['close']:.2f} | "
                 f"漲跌: <span style='color:{color}; font-weight:bold;'>{arrow} {abs(chg):.2f} ({arrow} {abs(pct):.2f}%)</span> | "
-                f"量: {last_kb['volume']:,} 張"
+                f"量: {last_kb['volume']:,} {_vol_unit(code)}"
             )
             self.lbl_hover_info.setText(init_text)
         else:
@@ -616,9 +644,19 @@ class SmartStockMainWindow(QtWidgets.QMainWindow):
             f"時間: {info['datetime']} | "
             f"開: {info['open']:.2f} | 高: {info['high']:.2f} | 低: {info['low']:.2f} | 收: {info['close']:.2f} | "
             f"漲跌: <span style='color:{color}; font-weight:bold;'>{arrow} {abs(info['change']):.2f} ({arrow} {abs(info['pct_change']):.2f}%)</span> | "
-            f"量: {info['volume']:,} 張"
+            f"量: {info['volume']:,} {self._get_volume_unit()}"
         )
         self.lbl_hover_info.setText(text)
+
+    def _get_volume_unit(self) -> str:
+        """★ 依當前商品代碼回傳正確成交量單位：期貨→口, 指數→億, 股票整股→張 ★"""
+        c = self.current_code
+        if c.startswith("TX") or c.startswith("MX") or c.startswith("TM") or c.endswith("F1"):
+            return "口"
+        elif c.startswith("IX"):
+            return "億"
+        else:
+            return "張"
 
     def on_order_submitted(self, order: dict):
         self.console_widget.log_success(

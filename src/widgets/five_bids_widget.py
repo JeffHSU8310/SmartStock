@@ -51,7 +51,11 @@ class FiveBidsWidget(QtWidgets.QWidget):
 
         self.table = QtWidgets.QTableWidget(5, 4)
         self.table.setHorizontalHeaderLabels(["買張", "買價 (Bid)", "賣價 (Ask)", "賣張"])
-        self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        # 欄寬自動伸縮：隨左側面板拉寬可完整顯示所有數據
+        self.table.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(3, QtWidgets.QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.table.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)

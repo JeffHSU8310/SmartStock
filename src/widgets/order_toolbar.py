@@ -18,34 +18,41 @@ class OrderToolbarWidget(QtWidgets.QWidget):
         layout.addWidget(title)
 
         grid = QtWidgets.QGridLayout()
+        grid.setColumnStretch(0, 0)  # 標籤欄固定最小寬度
+        grid.setColumnStretch(1, 1)  # 輸入欄自動填滿剩餘空間
 
-        # 1. 新增帳戶選擇列 (圖片 3 需求修復)
+        # 1. 帳戶選擇 (Row 0)
         grid.addWidget(QtWidgets.QLabel("下單帳戶:"), 0, 0)
         self.combo_account = QtWidgets.QComboBox()
         self.combo_account.addItems([
-            "🟢 永豐金實盤帳戶 (SinoPac Real)",
-            "🟡 智慧模擬/虛擬交易帳戶 (Paper Trading)"
+            "🟡 智慧模擬/虛擬交易帳戶 (Paper Trading)",
+            "🟢 永豐金實盤帳戶 (SinoPac Real)"
         ])
+        self.combo_account.setCurrentIndex(0) # 預設虛擬帳號
         self.combo_account.setStyleSheet("color: #00E5FF; font-weight: bold;")
-        grid.addWidget(self.combo_account, 0, 1, 1, 3)
+        self.combo_account.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
+        grid.addWidget(self.combo_account, 0, 1)
 
-        # 2. 商品與委託條件
+        # 2. 商品代碼 (Row 1)
         grid.addWidget(QtWidgets.QLabel("商品代碼:"), 1, 0)
         self.input_code = QtWidgets.QLineEdit("2330")
         grid.addWidget(self.input_code, 1, 1)
 
-        grid.addWidget(QtWidgets.QLabel("委託類型:"), 1, 2)
+        # 3. 委託類型 (Row 2)
+        grid.addWidget(QtWidgets.QLabel("委託類型:"), 2, 0)
         self.combo_type = QtWidgets.QComboBox()
         self.combo_type.addItems(["ROD (當日有效)", "IOC (立即成交否則取消)", "FOK (立即全部成交否則取消)"])
-        grid.addWidget(self.combo_type, 1, 3)
+        grid.addWidget(self.combo_type, 2, 1)
 
-        grid.addWidget(QtWidgets.QLabel("委託價格:"), 2, 0)
+        # 4. 委託價格 (Row 3)
+        grid.addWidget(QtWidgets.QLabel("委託價格:"), 3, 0)
         self.input_price = QtWidgets.QLineEdit("965.0")
-        grid.addWidget(self.input_price, 2, 1)
+        grid.addWidget(self.input_price, 3, 1)
 
-        grid.addWidget(QtWidgets.QLabel("委託張數:"), 2, 2)
+        # 5. 委託張數 (Row 4)
+        grid.addWidget(QtWidgets.QLabel("委託張數:"), 4, 0)
         self.input_qty = QtWidgets.QLineEdit("1")
-        grid.addWidget(self.input_qty, 2, 3)
+        grid.addWidget(self.input_qty, 4, 1)
 
         layout.addLayout(grid)
 

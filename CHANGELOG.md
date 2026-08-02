@@ -4,6 +4,30 @@
 
 ---
 
+## [v1.0.36] - 2026-08-02
+
+### 🎯 跨 AI 模型 (Claude / GPT / Gemini 等) 無條件自動讀取與恪遵專案規則規範 (v1.0.36)
+- **新增專案重點規則 Rule 21 ([PROJECT_RULES.md](file:///E:/SmartStock/PROJECT_RULES.md))**：
+  - 不論切換或使用哪一個 AI 模型（包含 Claude、GPT、Gemini 等所有模型），開啟對話與執行任務時都必須自動讀取 `PROJECT_RULES.md` 專案重點規則，並無條件嚴格遵守專案所有 22 項規則。
+- **版本規範**：
+  - 版號升級至 v1.0.36，嚴格遵守 Rule 13 (+0.0.1)。
+
+---
+
+## [v1.0.35] - 2026-08-02
+
+### 🎯 下單帳戶預設虛擬帳號 + 左側面板欄寬自動伸縮 (v1.0.35)
+- **下單帳戶預設為虛擬帳號 ([src/widgets/order_toolbar.py](file:///E:/SmartStock/src/widgets/order_toolbar.py))**：
+  - 啟動時下單帳戶 ComboBox 預設選擇「🟡 智慧模擬/虛擬交易帳戶 (Paper Trading)」，避免誤操作實盤帳戶。
+- **左側面板欄寬全自動伸縮 ([src/widgets/watchlist_widget.py](file:///E:/SmartStock/src/widgets/watchlist_widget.py), [src/widgets/five_bids_widget.py](file:///E:/SmartStock/src/widgets/five_bids_widget.py), [src/widgets/order_toolbar.py](file:///E:/SmartStock/src/widgets/order_toolbar.py))**：
+  - 自選股表格 4 欄 (代碼/名稱/成交價/漲跌幅) 全部改為 `QHeaderView.Stretch` 隨面板拉寬自動等比伸縮。
+  - 五檔委買委賣表格 4 欄亦改為逐欄 `Stretch`，確保各欄隨面板寬度自動調整。
+  - 下單工具欄 GridLayout 增加 `setColumnStretch`，輸入欄位隨面板寬度自適應。
+- **版本規範**：
+  - 版號升級至 v1.0.35，嚴格遵守 Rule 13 (+0.0.1)。
+
+---
+
 ## [v1.0.34] - 2026-08-01
 
 ### 🎯 全面導入 TAIFEX 官方期貨開盤參考價 (Reference Price) 漲跌計算引擎 (v1.0.34)

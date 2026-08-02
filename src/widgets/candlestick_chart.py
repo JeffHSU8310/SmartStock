@@ -79,6 +79,7 @@ class NativeCandlestickChart(QtWidgets.QWidget):
         self.dif_vals = []
         self.dea_vals = []
         self.macd_bars = []
+        self.ref_price = 0.0  # ★ 當日官方參考價 (Reference Price)，由外部傳入 ★
 
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -137,6 +138,10 @@ class NativeCandlestickChart(QtWidgets.QWidget):
 
         # 綁定游標懸停事件 (實現精準吸附 K 棒)
         self.win1.scene().sigMouseMoved.connect(self.on_mouse_moved)
+
+    def set_ref_price(self, ref_price: float):
+        """★ 設定當日官方參考價 (Reference Price)，用於最新 K 棒漲跌計算 ★"""
+        self.ref_price = ref_price
 
     def set_data(self, kbars: List[Dict]):
         """切換商品時 100% 徹底清空重置數據、DateAxisItem 與 3 層圖表」"""
@@ -281,8 +286,16 @@ class NativeCandlestickChart(QtWidgets.QWidget):
             high_p = kb['high']
             low_p = kb['low']
             vol = kb['volume']
-            change = close_p - open_p
-            pct_change = (change / open_p * 100.0) if open_p != 0 else 0.0
+            # ★ 漲跌計算：最新一根 K 棒用當日參考價 (Reference Price)，歷史 K 棒用前一根收盤 ★
+            is_last_bar = (idx == len(self.kbars_data) - 1)
+            if is_last_bar and self.ref_price > 0:
+                base_price = self.ref_price
+            elif idx > 0:
+                base_price = self.kbars_data[idx - 1]['close']
+            else:
+                base_price = open_p
+            change = close_p - base_price
+            pct_change = (change / base_price * 100.0) if base_price != 0 else 0.0
 
             ma5_val = self.ma5_vals[idx] if idx < len(self.ma5_vals) and not np.isnan(self.ma5_vals[idx]) else None
             ma20_val = self.ma20_vals[idx] if idx < len(self.ma20_vals) and not np.isnan(self.ma20_vals[idx]) else None

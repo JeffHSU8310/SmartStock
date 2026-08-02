@@ -6,6 +6,24 @@
 
 ## 📜 對話紀錄歷程
 
+### 📌 [記錄時間: 2026-08-02] - 新增跨 AI 模型無條件讀取與遵守專案規則 Rule 21 (v1.0.36)
+
+- **使用者需求 (User Prompt)**:
+  - 要求加入新規則：「不論用哪一個模型 (包含 Claude & GPT)，都還是要讀取規則、遵守規則。」
+
+- **系統處理與決策 (System Action & Decision)**:
+  - 於 [`PROJECT_RULES.md`](file:///E:/SmartStock/PROJECT_RULES.md) 正式新增 **Rule 21**：「**跨 AI 模型無條件自動讀取與恪遵專案規則規範**：不論切換或使用哪一個 AI 模型（包含 Claude、GPT、Gemini 等所有模型），開啟對話與執行任務時都必須自動讀取 `PROJECT_RULES.md` 專案重點規則，並無條件嚴格遵守所有 22 項規則！」
+  - 軟體版本由 `v1.0.35` 遞增至 `v1.0.36`（恪遵 Rule 13 `+0.0.1` 遞增規範）。
+  - 同步更新 [`CHANGELOG.md`](file:///E:/SmartStock/CHANGELOG.md) 與主程式標題版本。
+
+- **當前專案狀態**:
+  - **本機工作目錄**: `E:\SmartStock`
+  - **軟體版本**: v1.0.36 (恪遵 Rule 13 `+0.0.1` 遞增)
+  - **GitHub 儲存庫**: `https://github.com/JeffHSU8310/SmartStock.git`
+  - **Git 分支**: main
+
+---
+
 ### 📌 [記錄時間: 2026-08-01] - 全面導入 TAIFEX 期貨開盤參考價 (Reference Price) 漲跌計算引擎 (v1.0.34)
 
 - **使用者需求 (User Prompt)**:
