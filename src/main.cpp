@@ -26,7 +26,7 @@ EXPORT_API int run_stock_selection(const SmartStock::KBar* kbars, int count, con
     return 0;
 }
 
-// C 介面：執行回測
+// C 介面：執行 MA 雙均線回測
 EXPORT_API void run_backtest_ma(const SmartStock::KBar* kbars, int count, int fastMA, int slowMA, double capital, SmartStock::BacktestResult* outResult) {
     if (!kbars || count <= 0 || !outResult) return;
 
@@ -34,9 +34,17 @@ EXPORT_API void run_backtest_ma(const SmartStock::KBar* kbars, int count, int fa
     *outResult = SmartStock::BacktestEngine::runMABacktest(data, fastMA, slowMA, capital);
 }
 
+// C 介面：通用 C++ 高速回測 (含費率與滑價)
+EXPORT_API void run_fast_backtest_cpp(const SmartStock::KBar* kbars, int count, int fastMA, int slowMA, double capital, double feeRate, double taxRate, double slippage, SmartStock::BacktestResult* outResult) {
+    if (!kbars || count <= 0 || !outResult) return;
+
+    std::vector<SmartStock::KBar> data(kbars, kbars + count);
+    *outResult = SmartStock::BacktestEngine::runFastBacktest(data, fastMA, slowMA, capital, feeRate, taxRate, slippage);
+}
+
 // C 介面：測試 C++ 引擎版本與連線
 EXPORT_API const char* get_engine_version() {
-    return "SmartStock C++ Core Engine v1.0.0 (High Performance Quant)";
+    return "SmartStock C++ Core Engine v1.0.46 (High Performance Quant Backtest Engine)";
 }
 
 }

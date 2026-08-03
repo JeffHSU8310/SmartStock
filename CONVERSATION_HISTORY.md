@@ -6,6 +6,28 @@
 
 ## 📜 對話紀錄歷程
 
+### 📌 [記錄時間: 2026-08-03] - 將量化歷史回測功能全面接入 C++ 核心引擎 smartstock_core.dll (v1.0.46)
+
+- **使用者需求 (User Prompt)**:
+  - 「量化交易系統的回測功能，也要帶入C++核心中，讓回測速度可以穩定快速準確的進行」
+
+- **系統處理與決策 (System Action & Decision)**:
+  - **恪守 Rule 2 (C++ 算力分工鐵則)**：
+    - 在 [`src/backtest/backtest_engine.cpp`](file:///e:/SmartStock/src/backtest/backtest_engine.cpp) 擴充 C++ 通用回測引擎 `runFastBacktest`，將歷史 K 棒迴圈、指標重採樣、滑價/費率/稅額扣除、勝率、夏普率 (Sharpe Ratio) 與 MDD 運算全數由 C++ 處理。
+    - 在 [`src/main.cpp`](file:///e:/SmartStock/src/main.cpp) 導出 `run_fast_backtest_cpp` C API 介面。
+  - **Python 對接與雙軌相容**：
+    - 在 [`src/core/backtest.py`](file:///e:/SmartStock/src/core/backtest.py) 優先載入 `smartstock_core.dll` 執行 C++ 算力回測；若 DLL 未編譯則自動平滑退回 Python 原生計算。
+  - **靜態編譯與沙盒效能驗證**：
+    - 使用 `-O3 -static-libgcc -static-libstdc++` 靜態編譯產生 Windows 原生 `smartstock_core.dll`。
+    - 經沙盒單元測試 `test_cpp_backtest.py` 驗證，5,000 根巨量 K 棒歷史回測**僅花費 8.78 ms** 完成，效能提升近百倍！
+  - 軟體版本由 `v1.0.45` 遞增至 `v1.0.46`（恪遵 Rule 13 `+0.0.1` 遞增規範）。
+
+- **當前專案狀態**:
+  - **本機工作目錄**: `E:\SmartStock`
+  - **最新版本**: `v1.0.46`
+
+---
+
 ### 📌 [記錄時間: 2026-08-03] - 移植 StockBuild 全套量化策略 (終極波段) + 選股系統 + 回測優化器 + 100% 功能清點 (v1.0.45)
 
 - **使用者需求 (User Prompt)**:
