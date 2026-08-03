@@ -1,0 +1,1 @@
+# SmartStock Strategies Package

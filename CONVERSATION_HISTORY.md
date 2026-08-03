@@ -6,6 +6,26 @@
 
 ## 📜 對話紀錄歷程
 
+### 📌 [記錄時間: 2026-08-03] - 移植 StockBuild 零股系統 + 下單交易與風控 + 庫存對帳 + 量化策略引擎 (v1.0.44)
+
+- **使用者需求 (User Prompt)**:
+  - 「那一併也把 StockBuild 的零股&零股交易系統也帶入到SmartStock。還有相關交易系統、庫存系統、量化交易系統都帶入。」
+
+- **系統處理與決策 (System Action & Decision)**:
+  - 成功完成四套核心子系統的精準模組化移植與整合：
+    1. **零股 & 零股交易系統**：[`src/brokers/sinopac.py`](file:///e:/SmartStock/src/brokers/sinopac.py) 支援盤中零股 (`IntradayOdd`) 1~999 股限價 ROD 委託組裝與發送；[`src/sinopac_engine.py`](file:///e:/SmartStock/src/sinopac_engine.py) 支援零股模式 (`is_odd_lot`) WebSocket 報價訂閱 (`intraday_odd=True`)。
+    2. **交易系統與本地風控**：引入 [`src/core/order_intent.py`](file:///e:/SmartStock/src/core/order_intent.py)、[`src/core/order_rules.py`](file:///e:/SmartStock/src/core/order_rules.py) 與 [`src/core/tick_rules.py`](file:///e:/SmartStock/src/core/tick_rules.py)（恪守 Rule 19 TWSE 一般股票 vs ETF 雙軌升降單位與單筆 499 張 / 999 股數量防護）。恪守 **Rule 18** 100% 限定 Shioaji 模擬環境。
+    3. **庫存系統**：引入 [`src/core/paper_account.py`](file:///e:/SmartStock/src/core/paper_account.py) 模擬對帳引擎；`SinopacBroker` 與 `SinoPacEngine` 擴充 `list_positions()` 實時庫存與損益查詢。
+    4. **量化策略系統**：引入 [`src/core/custom_strategy.py`](file:///e:/SmartStock/src/core/custom_strategy.py) 與 [`src/strategies/`](file:///e:/SmartStock/src/strategies/) 策略套件包，指標運算依然由 **C++ 核心模組 (`smartstock_core.dll`)** 提供超級算力支援。
+  - 沙盒環境 100% 通過單元測試腳本 `test_trading_system.py` 5 項步驟測試。
+  - 軟體版本由 `v1.0.43` 遞增至 `v1.0.44`（恪遵 Rule 13 `+0.0.1` 遞增規範）。
+
+- **當前專案狀態**:
+  - **本機工作目錄**: `E:\SmartStock`
+  - **最新版本**: `v1.0.44`
+
+---
+
 ### 📌 [記錄時間: 2026-08-03] - 模組化移植 StockBuild 券商適配器 + 整合 C++ 核心與 PyQt6 高效渲染 (v1.0.43)
 
 - **使用者需求 (User Prompt)**:

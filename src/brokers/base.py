@@ -22,6 +22,10 @@ class BrokerClient:
     def logout(self):
         raise NotImplementedError
 
+    def list_positions(self):
+        """回傳 [(symbol, 買賣別, 股數/口數, 成本均價, 市價/參考價, 未實現損益), ...];未登入回空 list。"""
+        return []
+
     def build_order(self, order_intent):
         raise NotImplementedError
 

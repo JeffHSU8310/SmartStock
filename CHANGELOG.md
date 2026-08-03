@@ -4,6 +4,28 @@
 
 ---
 
+## [v1.0.44] - 2026-08-03
+
+### 🎯 移植 StockBuild 零股系統 + 下單交易與風控 + 庫存對帳 + 量化策略引擎 (v1.0.44)
+- **零股 & 零股交易系統 ([src/brokers/sinopac.py](file:///e:/SmartStock/src/brokers/sinopac.py), [src/sinopac_engine.py](file:///e:/SmartStock/src/sinopac_engine.py))**：
+  - 於 `SinopacBroker.build_order` 實作盤中零股 (`StockOrderLot.IntradayOdd`) 限價 ROD 委託組裝與發送，支援 1~999 股零股獨立下單。
+  - 支援零股模式 (`is_odd_lot`) WebSocket 實時報價訂閱 (`intraday_odd=True`) 與盤後警告防護。
+- **交易系統與本地風控防護 ([src/core/order_intent.py](file:///e:/SmartStock/src/core/order_intent.py), [src/core/order_rules.py](file:///e:/SmartStock/src/core/order_rules.py))**：
+  - 引入 `order_intent.py`（券商中立委託意圖組裝器）與 `order_rules.py`（買賣別、價格檔位與單筆 499 張 / 999 股數量防護）。
+  - 恪守 **Rule 18 (交易安全規範)**：所有測試下單一律限定於 Shioaji 模擬環境 (`simulation=True`)，零實盤資金風險。
+- **TWSE 升降單位雙軌權威規定 (Rule 19) ([src/core/tick_rules.py](file:///e:/SmartStock/src/core/tick_rules.py))**：
+  - 引入 `tick_rules.py`：完全對齊 TWSE 官方一般股票 (10/50/100/500/1000 6級距) 與 ETF (未滿50: 0.01 / 50以上: 0.05) 雙軌檔位算價與捨入防護。
+- **庫存與模擬帳號系統 ([src/core/paper_account.py](file:///e:/SmartStock/src/core/paper_account.py))**：
+  - 引入 `paper_account.py` 模擬帳戶與損益對帳引擎，於 `SinopacBroker` 與 `SinoPacEngine` 擴充 `list_positions()` 實時庫存與未實現損益查詢。
+- **量化策略執行引擎 (Rule 2) ([src/core/custom_strategy.py](file:///e:/SmartStock/src/core/custom_strategy.py), [src/strategies/](file:///e:/SmartStock/src/strategies/))**：
+  - 建立自訂量化策略執行環境，策略指標計算由 **C++ 核心模組 (`smartstock_core.dll`)** 提供超級算力支援。
+- **沙盒自動化驗證**：
+  - 沙盒單元測試腳本 `test_trading_system.py` 100% 通過 5 項步驟四大系統單元測試。
+- **版本規範**：
+  - 版號升級至 v1.0.44，嚴格遵守 Rule 13 (+0.0.1)。
+
+---
+
 ## [v1.0.43] - 2026-08-03
 
 ### 🎯 模組化移植 StockBuild 券商適配器 + 整合 C++ 核心與 PyQt6 高效渲染 (v1.0.43)

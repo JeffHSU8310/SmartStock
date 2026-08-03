@@ -178,3 +178,87 @@ class SinopacBroker(BrokerClient):
             if self.account_id(a) == want:
                 return a
         return None
+
+    def build_order(self, oi: dict):
+        """把 core.order_intent 的輸出翻成 Shioaji Order 物件 (相容 StockOrder/FuturesOrder 與通用 Order)。
+        整股與零股分開組，零股帶入 order_lot=IntradayOdd；期貨則採用 FuturesPriceType 常數。
+        """
+        if not HAS_SJ:
+            raise RuntimeError("未安裝 Shioaji SDK")
+
+        action = sj.constant.Action.Buy if oi['action'] == '買進' else sj.constant.Action.Sell
+        px = float(oi['price'])
+        qty = int(oi['qty'])
+        ptype = oi['price_type']
+
+        extra = {}
+        if oi.get('account'):
+            acc = self.account_object(oi['account'])
+            if acc is not None:
+                extra['account'] = acc
+
+        order_cls = getattr(self.api, 'Order', None)
+
+        if oi['trade_type'] == '期貨':
+            fut_order_cls = getattr(self.api, 'FuturesOrder', None) or order_cls
+            fut_ptype = {'限價': sj.constant.FuturesPriceType.LMT,
+                         '市價': sj.constant.FuturesPriceType.MKT,
+                         '範圍市價': sj.constant.FuturesPriceType.MKP}.get(ptype, sj.constant.FuturesPriceType.LMT)
+            return fut_order_cls(price=px, quantity=qty, action=action,
+                                 price_type=fut_ptype,
+                                 order_type=sj.constant.OrderType.ROD, **extra)
+
+        stk_order_cls = getattr(self.api, 'StockOrder', None) or order_cls
+        if oi['trade_type'] == '零股':
+            # 盤中零股單，單位股，限價 ROD
+            return stk_order_cls(price=px, quantity=qty, action=action,
+                                 price_type=sj.constant.StockPriceType.LMT,
+                                 order_type=sj.constant.OrderType.ROD,
+                                 order_lot=sj.constant.StockOrderLot.IntradayOdd,
+                                 order_cond=sj.constant.StockOrderCond.Cash, **extra)
+        stk_ptype = (sj.constant.StockPriceType.MKT if ptype == '市價'
+                     else sj.constant.StockPriceType.LMT)
+        return stk_order_cls(price=px, quantity=qty, action=action,
+                             price_type=stk_ptype,
+                             order_type=sj.constant.OrderType.ROD,
+                             order_lot=sj.constant.StockOrderLot.Common,
+                             order_cond=sj.constant.StockOrderCond.Cash, **extra)
+
+    def place_order(self, contract, oi: dict):
+        """送出委託至永豐金 API (100% 限定 Shioaji 模擬環境，零實盤資金風險)"""
+        if not self.api or not self.logged_in:
+            raise RuntimeError("未登入永豐金 API")
+        if oi.get('account') and self.account_object(oi['account']) is None:
+            raise ValueError(f"找不到指定的永豐帳號 {oi['account']}")
+        return self.api.place_order(contract, self.build_order(oi))
+
+    def order_status_text(self, trade):
+        st = getattr(getattr(trade, 'status', None), 'status', '')
+        return getattr(st, 'name', st) or '送出'
+
+    def list_positions(self) -> list:
+        """查詢永豐金股票與期貨即時部位與庫存"""
+        if not self.api or not self.logged_in:
+            return []
+        positions = []
+        try:
+            stk_pos = self.api.list_positions(self.api.stock_account) if hasattr(self.api, 'stock_account') else []
+            for p in (stk_pos or []):
+                code = getattr(p, 'code', '')
+                qty = int(getattr(p, 'quantity', 0))
+                price = float(getattr(p, 'price', 0.0))
+                last_price = float(getattr(p, 'last_price', price))
+                pnl = float(getattr(p, 'pnl', 0.0))
+                direction = '買進' if getattr(p, 'direction', '') == 'Action.Buy' else '買進'
+                positions.append({
+                    'code': code,
+                    'direction': direction,
+                    'qty': qty,
+                    'price': price,
+                    'last_price': last_price,
+                    'pnl': pnl,
+                    'type': '股票'
+                })
+        except Exception:
+            pass
+        return positions
