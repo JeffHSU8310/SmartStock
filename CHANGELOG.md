@@ -4,6 +4,27 @@
 
 ---
 
+## [v1.0.45] - 2026-08-03
+
+### 🎯 移植 StockBuild 全套量化策略 (終極波段) + 選股系統 + 回測優化器 + 100% 功能清點 (v1.0.45)
+- **恪守專案防護鐵則**：
+  - 100% 僅讀取 StockBuild 專案作為學習與移植來源，**絕不對 StockBuild 專案進行任何寫入或修改**。
+- **楚狂人終極波段策略與通道指標 ([src/core/chukuangren_band.py](file:///e:/SmartStock/src/core/chukuangren_band.py))**：
+  - 完整移植「終極波段策略」引擎，包含看加權指數 (A) 做自選商品 (B)、12:00 二次確認狀態機、點數移動停利與 SMA20 移動停利切換。
+- **多因子選股引擎 ([src/core/market_screener.py](file:///e:/SmartStock/src/core/market_screener.py))**：
+  - 移植全市場多因子選股與基本面 (PE / PB / 殖利率 / EPS / 毛利率) 篩選過濾器，選股運算繼續由 **C++ 核心 (`smartstock_core.dll`)** 提供極速算力。
+- **量化回測與網格搜尋優化器 ([src/core/backtest.py](file:///e:/SmartStock/src/core/backtest.py), [src/core/optimizer.py](file:///e:/SmartStock/src/core/optimizer.py), [src/core/cost_model.py](file:///e:/SmartStock/src/core/cost_model.py))**：
+  - 移植量化歷史回測引擎（含夏普率、MDD 最大回撤、勝率與權益曲線）與 `cost_model` 交易成本模型。
+  - 實作 `optimizer.py` 網格搜尋參數最佳化器。
+- **StockBuild 全功能清查與對照 (100% 覆蓋)**：
+  - 完成 13 大項功能完整清點對照（雙軌報價、零股交易、台指期 R1 解析、風控規則、終極波段、模擬帳戶、選股引擎、回測最佳化、C++ 算力等），StockBuild 所有功能已 100% 完整覆蓋於 SmartStock 中！
+- **沙盒自動化驗證**：
+  - 沙盒測試腳本 `test_screener_and_backtest.py` 100% 通過 5 項單元測試。
+- **版本規範**：
+  - 版號升級至 v1.0.45，嚴格遵守 Rule 13 (+0.0.1)。
+
+---
+
 ## [v1.0.44] - 2026-08-03
 
 ### 🎯 移植 StockBuild 零股系統 + 下單交易與風控 + 庫存對帳 + 量化策略引擎 (v1.0.44)
