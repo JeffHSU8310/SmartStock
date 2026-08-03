@@ -6,6 +6,26 @@
 
 ## 📜 對話紀錄歷程
 
+### 📌 [記錄時間: 2026-08-03] - 模組化移植 StockBuild 券商適配器 + 整合 C++ 核心與 PyQt6 高效渲染 (v1.0.43)
+
+- **使用者需求 (User Prompt)**:
+  - 「我希望採用模組化移植，然後報價系統一定要正常正確，K線圖一定也要正確正常。這樣有問題嗎?」
+
+- **系統處理與決策 (System Action & Decision)**:
+  - 採納模組化精準移植方案，建立 `src/brokers/` 與 `src/core/` 專屬模組：
+    - [`src/brokers/base.py`](file:///e:/SmartStock/src/brokers/base.py) & [`src/brokers/sinopac.py`](file:///e:/SmartStock/src/brokers/sinopac.py)：完整移植 `StockBuild` 實戰適配器，封裝連線、CA 憑證、合約檢索與帳戶管理。
+    - [`src/core/sj_compat.py`](file:///e:/SmartStock/src/core/sj_compat.py)：引入 Shioaji 1.5.6 / 1.7 雙版本合約與帳號相容層。
+  - 重構 [`src/sinopac_engine.py`](file:///e:/SmartStock/src/sinopac_engine.py) 對接 `SinopacBroker`。
+  - 恪守 Rule 2 (C++ 掌管選股、回測、巨量 K 棒重採樣與指標計算) 與 Rule 22 (100% 券商真實數據金律)。
+  - 沙盒環境 100% 通過 `test_quote_engine.py` 4 項步驟模組化測試。
+  - 軟體版本由 `v1.0.42` 遞增至 `v1.0.43`（恪遵 Rule 13 `+0.0.1` 遞增規範）。
+
+- **當前專案狀態**:
+  - **本機工作目錄**: `E:\SmartStock`
+  - **最新版本**: `v1.0.43`
+
+---
+
 ### 📌 [記錄時間: 2026-08-03] - 研讀 StockBuild 串接券商 API 報價做法 + Shioaji REST API 流量節流防護 + WebSocket 實時串流訂閱介面 (v1.0.42)
 
 - **使用者需求 (User Prompt)**:

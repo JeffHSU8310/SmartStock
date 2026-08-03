@@ -8,6 +8,9 @@ import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional, Any, Callable
 
+from brokers.sinopac import SinopacBroker
+from core import sj_compat
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 try:
@@ -25,7 +28,8 @@ class SinoPacEngine:
 
     def __init__(self, simulation: bool = True):
         self.simulation = simulation
-        self.api = None
+        self.broker = SinopacBroker(simulation=self.simulation)
+        self.api = self.broker.api
         self.is_connected = False
         self.is_ca_active = False
         self.active_account = None
@@ -43,9 +47,11 @@ class SinoPacEngine:
 
     def _init_shioaji(self):
         try:
-            if SHIOAJI_AVAILABLE:
-                self.api = sj.Shioaji(simulation=self.simulation)
-                logging.info("Shioaji API SDK 初始化完成")
+            if SHIOAJI_AVAILABLE and self.broker:
+                self.api = getattr(self.broker, 'api', None)
+                if not self.api:
+                    self.api = self.broker.new_session()
+                logging.info("Shioaji API SDK & Broker Adapter 初始化完成")
         except Exception as e:
             logging.error(f"Shioaji API 初始化失敗: {e}")
             self.api = None
@@ -311,7 +317,7 @@ class SinoPacEngine:
         return None
 
     def get_contract(self, code: str):
-        """全面防爆獲取官方正確 Shioaji Contract 物件 (支援 api.contracts.get 官方檢索與字典層級安全提取)"""
+        """全面防爆獲取官方正確 Shioaji Contract 物件 (整合 SinopacBroker 適配器與字典層級安全提取)"""
         if not self.api or not self.is_connected:
             return None
 
@@ -319,7 +325,28 @@ class SinoPacEngine:
         if code_upper in self.contracts_cache:
             return self.contracts_cache[code_upper]
 
-        # 1. 建立代碼轉換對照集 (包含 Shioaji 官方合約代碼 001, 101, TXFR1)
+        # 1. 優先使用 SinopacBroker 模組適配器進行全相容性查詢
+        if self.broker:
+            try:
+                if code_upper in ["IX0001", "TSE", "加權指數", "001"]:
+                    c = self.broker.index_contract("TSE")
+                    if c and self._safe_has_code(c):
+                        self.contracts_cache[code_upper] = c
+                        return c
+                elif code_upper in ["IX0043", "OTC", "櫃買指數", "101"]:
+                    c = self.broker.index_contract("OTC")
+                    if c and self._safe_has_code(c):
+                        self.contracts_cache[code_upper] = c
+                        return c
+                else:
+                    c = self.broker.stock_contract(code_upper)
+                    if c and self._safe_has_code(c):
+                        self.contracts_cache[code_upper] = c
+                        return c
+            except Exception as b_err:
+                logging.warning(f"SinopacBroker contract lookup warning: {b_err}")
+
+        # 2. 建立代碼轉換對照集 (包含 Shioaji 官方合約代碼 001, 101, TXFR1)
         candidate_codes = [code_upper]
         if code_upper in ["IX0001", "TSE", "加權指數", "001"]:
             candidate_codes = ["001", "0001", "IX0001", "TSE001", "TSE0001", "0000"]
