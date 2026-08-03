@@ -1,16 +1,25 @@
 import os
 import json
 import logging
-from PySide6 import QtCore, QtGui, QtWidgets
+try:
+    from PySide6 import QtCore, QtGui, QtWidgets
+except ImportError:
+    from PyQt6 import QtCore, QtGui, QtWidgets
+
+if not hasattr(QtCore, 'Signal'):
+    QtCore.Signal = getattr(QtCore, 'pyqtSignal', None)
+if not hasattr(QtCore, 'Slot'):
+    QtCore.Slot = getattr(QtCore, 'pyqtSlot', None)
 from typing import Dict, Any
 
 CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "config", "indicator_config.json")
 
+QtPenStyle = getattr(QtCore.Qt, 'PenStyle', QtCore.Qt)
 LINE_STYLES = {
-    "實線 (SolidLine)": QtCore.Qt.SolidLine,
-    "虛線 (DashLine)": QtCore.Qt.DashLine,
-    "點線 (DotLine)": QtCore.Qt.DotLine,
-    "點劃線 (DashDotLine)": QtCore.Qt.DashDotLine
+    "實線 (SolidLine)": getattr(QtPenStyle, 'SolidLine', None),
+    "虛線 (DashLine)": getattr(QtPenStyle, 'DashLine', None),
+    "點線 (DotLine)": getattr(QtPenStyle, 'DotLine', None),
+    "點劃線 (DashDotLine)": getattr(QtPenStyle, 'DashDotLine', None)
 }
 
 LINE_STYLE_NAMES = list(LINE_STYLES.keys())

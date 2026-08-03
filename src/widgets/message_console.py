@@ -1,5 +1,13 @@
 import datetime
-from PySide6 import QtCore, QtGui, QtWidgets
+try:
+    from PySide6 import QtCore, QtGui, QtWidgets
+except ImportError:
+    from PyQt6 import QtCore, QtGui, QtWidgets
+
+if not hasattr(QtCore, 'Signal'):
+    QtCore.Signal = getattr(QtCore, 'pyqtSignal', None)
+if not hasattr(QtCore, 'Slot'):
+    QtCore.Slot = getattr(QtCore, 'pyqtSlot', None)
 
 class MessageConsoleWidget(QtWidgets.QWidget):
     """系統訊息與 API 訂閱日誌欄 (Message Console Widget)"""

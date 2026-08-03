@@ -1,4 +1,12 @@
-from PySide6 import QtCore, QtGui, QtWidgets
+try:
+    from PySide6 import QtCore, QtGui, QtWidgets
+except ImportError:
+    from PyQt6 import QtCore, QtGui, QtWidgets
+
+if not hasattr(QtCore, 'Signal'):
+    QtCore.Signal = getattr(QtCore, 'pyqtSignal', None)
+if not hasattr(QtCore, 'Slot'):
+    QtCore.Slot = getattr(QtCore, 'pyqtSlot', None)
 
 class OrderToolbarWidget(QtWidgets.QWidget):
     """快捷下單工具欄元件 (支援實盤 / 模擬帳戶選擇)"""

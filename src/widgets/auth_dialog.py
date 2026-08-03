@@ -1,6 +1,14 @@
 import os
 import sys
-from PySide6 import QtCore, QtGui, QtWidgets
+try:
+    from PySide6 import QtCore, QtGui, QtWidgets
+except ImportError:
+    from PyQt6 import QtCore, QtGui, QtWidgets
+
+if not hasattr(QtCore, 'Signal'):
+    QtCore.Signal = getattr(QtCore, 'pyqtSignal', None)
+if not hasattr(QtCore, 'Slot'):
+    QtCore.Slot = getattr(QtCore, 'pyqtSlot', None)
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(current_dir))

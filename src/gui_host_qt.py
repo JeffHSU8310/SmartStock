@@ -15,6 +15,11 @@ try:
 except ImportError:
     from PyQt6 import QtCore, QtGui, QtWidgets
 
+if not hasattr(QtCore, 'Signal'):
+    QtCore.Signal = getattr(QtCore, 'pyqtSignal', None)
+if not hasattr(QtCore, 'Slot'):
+    QtCore.Slot = getattr(QtCore, 'pyqtSlot', None)
+
 try:
     from src.sinopac_engine import SinoPacEngine
     from src.widgets.candlestick_chart import NativeCandlestickChart

@@ -1,5 +1,16 @@
-from PySide6 import QtCore, QtGui, QtWidgets
-import pyqtgraph as pg
+try:
+    from PySide6 import QtCore, QtGui, QtWidgets
+except ImportError:
+    from PyQt6 import QtCore, QtGui, QtWidgets
+
+if not hasattr(QtCore, 'Signal'):
+    QtCore.Signal = getattr(QtCore, 'pyqtSignal', None)
+if not hasattr(QtCore, 'Slot'):
+    QtCore.Slot = getattr(QtCore, 'pyqtSlot', None)
+try:
+    import pyqtgraph as pg
+except ImportError:
+    pg = None
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Any
@@ -9,14 +20,24 @@ try:
 except ImportError:
     from widgets.indicator_settings_dialog import DEFAULT_INDICATOR_CONFIG, load_indicator_config_from_json
 
+QtPenStyle = getattr(QtCore.Qt, 'PenStyle', QtCore.Qt)
 LINE_STYLES_MAP = {
-    "實線 (SolidLine)": QtCore.Qt.SolidLine,
-    "虛線 (DashLine)": QtCore.Qt.DashLine,
-    "點線 (DotLine)": QtCore.Qt.DotLine,
-    "點劃線 (DashDotLine)": QtCore.Qt.DashDotLine
+    "實線 (SolidLine)": getattr(QtPenStyle, 'SolidLine', None),
+    "虛線 (DashLine)": getattr(QtPenStyle, 'DashLine', None),
+    "點線 (DotLine)": getattr(QtPenStyle, 'DotLine', None),
+    "點劃線 (DashDotLine)": getattr(QtPenStyle, 'DashDotLine', None)
 }
 
-class DateAxisItem(pg.AxisItem):
+if pg is not None:
+    pg_AxisItem = pg.AxisItem
+    pg_GraphicsObject = pg.GraphicsObject
+    pg_PlotWidget = pg.PlotWidget
+else:
+    pg_AxisItem = object
+    pg_GraphicsObject = object
+    pg_PlotWidget = QtWidgets.QWidget
+
+class DateAxisItem(pg_AxisItem):
     """自訂時間軸 (DateAxisItem: 格式化 X 軸顯示日期時間如 2025-12-01)"""
     def __init__(self, dates: List[str], *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -32,10 +53,11 @@ class DateAxisItem(pg.AxisItem):
                 strings.append("")
         return strings
 
-class CandlestickItem(pg.GraphicsObject):
+class CandlestickItem(pg_GraphicsObject):
     """pyqtgraph 原生紅綠 K 棒 (間隔正好等於一根 K 棒的寬度: w=0.25)"""
     def __init__(self, data):
-        pg.GraphicsObject.__init__(self)
+        if pg is not None:
+            pg.GraphicsObject.__init__(self)
         self.data = data
         self.generatePicture()
 
