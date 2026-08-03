@@ -67,6 +67,66 @@ class SinopacBroker(BrokerClient):
         except Exception:
             return None
 
+    def futures_contract(self, raw: str):
+        """【學習自 StockBuild】通用期貨合約解析:任何期貨商品代號 (TX00/TXF/MXF...) → R1 熱門連續合約 (TXFR1)。
+        若無 R1 則挑選 delivery_month / 交割日最小的近月實體合約。
+        """
+        contracts_obj = getattr(self.api, 'Contracts', None)
+        if not contracts_obj:
+            return None
+
+        futs = getattr(contracts_obj, 'Futures', None) or getattr(contracts_obj, 'futures', None)
+        if not futs:
+            return None
+
+        raw_u = str(raw or '').strip().upper()
+        code_map = {'TX00': 'TXF', 'MX00': 'MXF', '台指期': 'TXF', '小台指': 'MXF'}
+        code = code_map.get(raw_u, raw_u)
+
+        if len(code) > 3:
+            grp3 = sj_compat._try_get(futs, code[:3])
+            if grp3 is not None:
+                c_exact = sj_compat._try_get(grp3, code)
+                if c_exact and getattr(c_exact, 'code', None):
+                    return c_exact
+                try:
+                    for cand in grp3:
+                        if sj_compat.match_contract_code(cand, code):
+                            return cand
+                except Exception:
+                    pass
+            code = code[:3]
+
+        grp = sj_compat._try_get(futs, code)
+        if grp is None:
+            return None
+
+        try:
+            r1 = sj_compat._try_get(grp, f"{code}R1")
+            if r1 and getattr(r1, 'code', None):
+                return r1
+        except Exception:
+            pass
+
+        try:
+            cands = list(grp)
+            r1s = [x for x in cands if str(getattr(x, 'symbol', '')).upper().endswith('R1')]
+            if r1s:
+                return r1s[0]
+
+            def _month_key(x):
+                dm = str(getattr(x, 'delivery_month', '') or getattr(x, 'delivery_date', '') or '')
+                return dm or '999999'
+
+            dated = [x for x in cands if any(ch.isdigit() for ch in str(getattr(x, 'symbol', '')))]
+            pool = dated if dated else cands
+            if pool:
+                return min(pool, key=_month_key)
+        except Exception:
+            pass
+
+        return None
+
     def sdk_version(self):
         return getattr(sj, '__version__', '?') if HAS_SJ else '(未安裝)'
 

@@ -338,6 +338,11 @@ class SinoPacEngine:
                     if c and self._safe_has_code(c):
                         self.contracts_cache[code_upper] = c
                         return c
+                elif code_upper in ["TX00", "TXF", "TXFR1", "TXRF1", "台指期", "MX00", "MXF", "小台指"] or code_upper.startswith("TX") or code_upper.startswith("MX"):
+                    c = self.broker.futures_contract(code_upper)
+                    if c and self._safe_has_code(c):
+                        self.contracts_cache[code_upper] = c
+                        return c
                 else:
                     c = self.broker.stock_contract(code_upper)
                     if c and self._safe_has_code(c):
