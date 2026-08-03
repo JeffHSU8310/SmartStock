@@ -6,6 +6,30 @@
 
 ## 📜 對話紀錄歷程
 
+### 📌 [記錄時間: 2026-08-03] - 研讀 StockBuild 串接券商 API 報價做法 + Shioaji REST API 流量節流防護 + WebSocket 實時串流訂閱介面 (v1.0.42)
+
+- **使用者需求 (User Prompt)**:
+  - 「https://github.com/JeffHSU8310/SmartStock 去讀取Github 這個位置內最新檔案」
+  - 「關於跟券商API串接，取得最新商品報價的做法，請參考這個位置內的檔案 https://github.com/JeffHSU8310/StockBuild，學習起來是怎麼做的，告訴我，他是怎麼做的。再調整SmartStock專案內的程式。」
+
+- **系統處理與決策 (System Action & Decision)**:
+  - 複製並深度研讀 `https://github.com/JeffHSU8310/StockBuild` 專案原始碼 (`brokers/sinopac.py` 與 `stock_app_pro.py`)：
+    - **雙軌報價機制**：WebSocket 實時串流 (`subscribe`) 零成本推送撮合與五檔，配合 REST API 快照 (`snapshots`) 在無串流或離線時補充。
+    - **API 流量防護 (Throttle Guard)**：REST 快照實施至少 **2.5 ~ 3 秒** 的呼叫間隔保護，恪守 Shioaji 官方 **10 秒 50 次** 上限，防護 API 遭封鎖。
+    - **背景訂閱與安全鎖 (`subscribe_lock`)**：退訂舊合約與訂閱新合約放在背景執行緒，搭配 `subscribe_lock` 防護線程安全與避免快速連點帶來的無效訂閱。
+  - 全面優化 [`src/sinopac_engine.py`](file:///e:/SmartStock/src/sinopac_engine.py)：
+    - 加入 `subscribe_lock` (線程安全鎖) 與 `subscribed_contracts` 狀態追蹤。
+    - 實作 `set_quote_callbacks()`、`subscribe_quote()` 與 `unsubscribe_quote()` WebSocket 實時報價訂閱介面。
+    - 於 `get_realtime_quotes()` 加入 `MIN_SNAPSHOT_INTERVAL = 2.5` 秒流量防護與 `last_realtime_cache` 最新快取機制。
+  - 沙盒環境 100% 通過單元測試腳本 `test_quote_engine.py` 驗證無誤。
+  - 軟體版本由 `v1.0.41` 遞增至 `v1.0.42`（恪遵 Rule 13 `+0.0.1` 遞增規範）。
+
+- **當前專案狀態**:
+  - **本機工作目錄**: `E:\SmartStock`
+  - **最新版本**: `v1.0.42`
+
+---
+
 ### 📌 [記錄時間: 2026-08-02] - 100% 券商真實數據金律 (Rule 22) + 徹底廢除假數據 + 布林通道第一層第二層獨立啟用 (v1.0.41)
 
 - **使用者需求 (User Prompt)**:

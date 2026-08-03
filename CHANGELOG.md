@@ -4,6 +4,23 @@
 
 ---
 
+## [v1.0.42] - 2026-08-03
+
+### 🎯 研讀 StockBuild 串接券商 API 金律 + Shioaji 行情 REST API 流量節流防護 + WebSocket 實時串流訂閱介面 (v1.0.42)
+- **研讀與借鏡 StockBuild 專案 (https://github.com/JeffHSU8310/StockBuild)**：
+  - 深入研讀與學習 `StockBuild` 在與永豐金 Shioaji API 串接獲取最新商品報價時的雙軌架構（WebSocket 實時串流推送 + REST API 批次快照流量防護），並全面調整 SmartStock 行情引擎。
+- **REST API 快照流量防護器 (Throttle Guard) ([src/sinopac_engine.py](file:///e:/SmartStock/src/sinopac_engine.py))**：
+  - 新增 `MIN_SNAPSHOT_INTERVAL = 2.5` 秒最小快照間隔防護與 `last_realtime_cache` 快取機制，防護 `get_realtime_quotes` 過度頻繁請求，恪守 Shioaji 官方 10 秒 50 次 (snapshots/ticks/kbars) 存取限制金律。
+- **WebSocket 實時報價訂閱與退訂介面 ([src/sinopac_engine.py](file:///e:/SmartStock/src/sinopac_engine.py))**：
+  - 新增 `subscribe_lock` (線程安全鎖) 與 `subscribed_contracts` 集合。
+  - 實作 `set_quote_callbacks()`、`subscribe_quote()` 及 `unsubscribe_quote()`，支援實時 Tick 與 BidAsk (五檔) 串流報價訂閱。
+- **沙盒自動化驗證**：
+  - 於沙盒中 100% 通過單元測試腳本 `test_quote_engine.py`，驗證初始化鎖、流量保護與 Rule 22 券商真實數據金律無誤。
+- **版本規範**：
+  - 版號升級至 v1.0.42，嚴格遵守 Rule 13 (+0.0.1)。
+
+---
+
 ## [v1.0.41] - 2026-08-02
 
 ### 🎯 100% 券商真實數據金律 (Rule 22) + 徹底廢除假數據 + 布林通道第一層第二層獨立啟用 (v1.0.41)

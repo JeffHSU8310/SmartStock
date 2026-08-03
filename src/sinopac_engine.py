@@ -3,9 +3,10 @@ import sys
 import logging
 import datetime
 import time
+import threading
 import pandas as pd
 import numpy as np
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Callable
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
@@ -19,12 +20,20 @@ except ImportError:
 class SinoPacEngine:
     """永豐金證券 Shioaji API 量化行情與交易引擎 (100% 恪遵 Rule 22 券商真實數據金律)"""
 
+    # Shioaji 官方 REST API (snapshots/ticks/kbars) 10 秒 50 次限制防護：最小快照間隔 2.5 秒
+    MIN_SNAPSHOT_INTERVAL = 2.5
+
     def __init__(self, simulation: bool = True):
         self.simulation = simulation
         self.api = None
         self.is_connected = False
         self.is_ca_active = False
         self.active_account = None
+        
+        self.subscribe_lock = threading.Lock()
+        self.last_snapshot_time = 0.0
+        self.last_realtime_cache = []
+        self.subscribed_contracts = set()
         
         self.sub_callbacks = []
         self.quote_cache = {}
@@ -129,9 +138,105 @@ class SinoPacEngine:
         self.is_connected = False
         self.is_ca_active = False
         self.kbars_cache.clear()
+        with self.subscribe_lock:
+            self.subscribed_contracts.clear()
 
     def disconnect(self):
         self.logout()
+
+    def set_quote_callbacks(self, on_tick_stk=None, on_bidask_stk=None, on_tick_fop=None, on_bidask_fop=None):
+        """註冊 Shioaji 官方即時報價 WebSocket 回調 (Tick 與 BidAsk)"""
+        if not self.api or not self.is_connected:
+            return False
+        try:
+            quote_api = getattr(self.api, "quote", None)
+            if quote_api:
+                if on_tick_stk and hasattr(quote_api, "set_on_tick_stk_v1_callback"):
+                    quote_api.set_on_tick_stk_v1_callback(on_tick_stk)
+                if on_bidask_stk and hasattr(quote_api, "set_on_bidask_stk_v1_callback"):
+                    quote_api.set_on_bidask_stk_v1_callback(on_bidask_stk)
+                if on_tick_fop and hasattr(quote_api, "set_on_tick_fop_v1_callback"):
+                    quote_api.set_on_tick_fop_v1_callback(on_tick_fop)
+                if on_bidask_fop and hasattr(quote_api, "set_on_bidask_fop_v1_callback"):
+                    quote_api.set_on_bidask_fop_v1_callback(on_bidask_fop)
+                logging.info("Shioaji 實時報價 WebSocket 回調設定完成")
+                return True
+        except Exception as e:
+            logging.error(f"設定報價回調失敗: {e}")
+        return False
+
+    def subscribe_quote(self, code: str, quote_type: str = "both", intraday_odd: bool = False) -> bool:
+        """【WebSocket 串流訂閱】訂閱指定商品實時撮合/五檔報價 (搭配 subscribe_lock 確保線程安全)"""
+        if not self.api or not self.is_connected:
+            return False
+
+        contract = self.get_contract(code)
+        if not contract:
+            logging.warning(f"無法訂閱報價：找不到商品 {code} 的合約物件")
+            return False
+
+        with self.subscribe_lock:
+            try:
+                quote_api = getattr(self.api, "quote", None)
+                if not quote_api or not hasattr(quote_api, "subscribe"):
+                    return False
+
+                c_code = getattr(contract, "code", code)
+                if c_code in self.subscribed_contracts:
+                    return True
+
+                if quote_type in ["tick", "both"]:
+                    try:
+                        quote_api.subscribe(contract, quote_type=sj.constant.QuoteType.Tick, version=sj.constant.QuoteVersion.v1, intraday_odd=intraday_odd)
+                    except (TypeError, Exception):
+                        quote_api.subscribe(contract, quote_type="tick", intraday_odd=intraday_odd)
+
+                if quote_type in ["bidask", "both"]:
+                    try:
+                        quote_api.subscribe(contract, quote_type=sj.constant.QuoteType.BidAsk, version=sj.constant.QuoteVersion.v1, intraday_odd=intraday_odd)
+                    except (TypeError, Exception):
+                        quote_api.subscribe(contract, quote_type="bidask", intraday_odd=intraday_odd)
+
+                self.subscribed_contracts.add(c_code)
+                logging.info(f"成功訂閱 [{c_code}] 即時報價串流")
+                return True
+            except Exception as e:
+                logging.error(f"訂閱商品 [{code}] 實時報價失敗: {e}")
+                return False
+
+    def unsubscribe_quote(self, code: str, quote_type: str = "both", intraday_odd: bool = False) -> bool:
+        """【WebSocket 串流退訂】退訂指定商品實時報價 (搭配 subscribe_lock 確保線程安全)"""
+        if not self.api or not self.is_connected:
+            return False
+
+        contract = self.get_contract(code)
+        if not contract:
+            return False
+
+        with self.subscribe_lock:
+            try:
+                quote_api = getattr(self.api, "quote", None)
+                if not quote_api or not hasattr(quote_api, "unsubscribe"):
+                    return False
+
+                c_code = getattr(contract, "code", code)
+                if quote_type in ["tick", "both"]:
+                    try:
+                        quote_api.unsubscribe(contract, quote_type=sj.constant.QuoteType.Tick, intraday_odd=intraday_odd)
+                    except Exception:
+                        pass
+                if quote_type in ["bidask", "both"]:
+                    try:
+                        quote_api.unsubscribe(contract, quote_type=sj.constant.QuoteType.BidAsk, intraday_odd=intraday_odd)
+                    except Exception:
+                        pass
+
+                self.subscribed_contracts.discard(c_code)
+                logging.info(f"已退訂 [{c_code}] 即時報價串流")
+                return True
+            except Exception as e:
+                logging.error(f"退訂商品 [{code}] 實時報價失敗: {e}")
+                return False
 
     def get_accounts(self) -> List[str]:
         if self.is_connected and self.api:
@@ -310,7 +415,8 @@ class SinoPacEngine:
     def get_realtime_quotes(self, code_list: List[str] = None) -> List[Dict]:
         """
         取得實時成交與參考價報價 (100% 恪遵 Rule 22 全真實券商行情數據金律)
-        若盤後或無即時快照，自動使用券商官方最新日 K 棒收盤價與參考價對齊。
+        學習 StockBuild 券商 API 串接金律：加入 2.5 秒快照流量節流防護 (Throttle Guard)，
+        避免過度頻繁的 REST 請求耗盡 Shioaji 官方 10 秒 50 次流量限制。
         """
         if code_list is None:
             code_list = ["IX0001", "IX0043", "TX00", "2330", "2317", "2454", "2308", "2382", "0050", "0056"]
@@ -318,6 +424,11 @@ class SinoPacEngine:
         results = []
         if not self.is_connected or not self.api:
             return results
+
+        now = time.time()
+        # 流量節流防護 (Throttle Guard)：若調用間隔小於 MIN_SNAPSHOT_INTERVAL (2.5秒)，優先回傳最新快取
+        if now - self.last_snapshot_time < self.MIN_SNAPSHOT_INTERVAL and self.last_realtime_cache:
+            return self.last_realtime_cache
 
         snap_map = {}
         contracts = []
@@ -405,6 +516,10 @@ class SinoPacEngine:
                     "amount_str": amt_str,
                     "is_realtime": True
                 })
+
+        if results:
+            self.last_realtime_cache = results
+            self.last_snapshot_time = now
 
         return results
 
