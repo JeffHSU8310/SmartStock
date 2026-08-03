@@ -6,6 +6,19 @@
 
 ## 📜 對話紀錄歷程
 
+### 📌 [記錄時間: 2026-08-03] - 提供一鍵開啟程式檔與啟動步驟說明 (v1.0.46)
+
+- **使用者需求 (User Prompt)**:
+  - 「我要怎麼在電腦開啟這個程式?」
+
+- **系統處理與決策 (System Action & Decision)**:
+  - 於 `E:\SmartStock` 根目錄新增一鍵啟動入口檔案：
+    1. [`main.py`](file:///e:/SmartStock/main.py)：Python 啟動腳本。
+    2. [`run.bat`](file:///e:/SmartStock/run.bat)：Windows 一鍵雙擊批次檔。
+  - 在 [`src/gui_host_qt.py`](file:///e:/SmartStock/src/gui_host_qt.py) 增加 `PyQt6` / `PySide6` 雙框架容錯載入，確保各種環境均可順暢啟動 GUI 介面。
+
+---
+
 ### 📌 [記錄時間: 2026-08-03] - 將量化歷史回測功能全面接入 C++ 核心引擎 smartstock_core.dll (v1.0.46)
 
 - **使用者需求 (User Prompt)**:

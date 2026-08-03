@@ -4,6 +4,13 @@
 
 ---
 
+## [v1.0.46] - 2026-08-03 (修訂)
+- **新增一鍵啟動程式 ([main.py](file:///e:/SmartStock/main.py), [run.bat](file:///e:/SmartStock/run.bat))**：
+  - 於根目錄提供 `main.py` 主程式啟動點與 `run.bat` 批次檔，方便使用者在 Windows 電腦上一鍵雙擊開啟 SmartStock。
+  - 於 GUI 主視窗 [`src/gui_host_qt.py`](file:///e:/SmartStock/src/gui_host_qt.py) 加入 `PyQt6` / `PySide6` 雙模組相容匯入機制。
+
+---
+
 ## [v1.0.46] - 2026-08-03
 
 ### 🎯 將量化歷史回測功能全面接入 C++ 核心引擎 smartstock_core.dll (v1.0.46)

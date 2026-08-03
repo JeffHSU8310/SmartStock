@@ -10,7 +10,10 @@ if current_dir not in sys.path:
 
 import ctypes
 from typing import List, Dict
-from PySide6 import QtCore, QtGui, QtWidgets
+try:
+    from PySide6 import QtCore, QtGui, QtWidgets
+except ImportError:
+    from PyQt6 import QtCore, QtGui, QtWidgets
 
 try:
     from src.sinopac_engine import SinoPacEngine
